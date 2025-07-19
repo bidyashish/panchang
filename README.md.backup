@@ -1,0 +1,269 @@
+# Astronomical Calculator with Panchanga
+
+A comprehensive TypeScript/JavaScript library for astronomical calculations with traditional Hindu Panchanga support, powered by Swiss Ephemeris.
+
+## Features
+
+- ✨ **Complete Panchanga Calculations**: Tithi, Nakshatra, Yoga, Karana, Vara
+- 🌍 **Location-based Calculations**: Accurate sunrise/sunset times
+- 🌙 **Lunar Calendar**: Moon phases and lunar mansions
+- ⏰ **Rahu Kaal**: Inauspicious time periods
+- 🎯 **High Accuracy**: Uses Swiss Ephemeris for precise calculations
+- 📦 **Easy to Use**: Simple API for integration into any project
+- 🔧 **TypeScript Support**: Full type definitions included
+
+## Installation
+
+```bash
+npm install astronomical-calculator
+```
+
+## Quick Start
+
+### JavaScript (CommonJS)
+
+```javascript
+const { getPanchanga, getPanchangaReport } = require('astronomical-calculator');
+
+// Calculate Panchanga for a specific date and location
+const date = new Date('2024-01-01T12:00:00Z');
+const latitude = 12.972;  // Bangalore, India
+const longitude = 77.594;
+const timezone = 'Asia/Kolkata';
+
+// Get Panchanga data
+const panchanga = getPanchanga(date, latitude, longitude, timezone);
+
+console.log(`Tithi: ${panchanga.tithi.name}`);
+console.log(`Nakshatra: ${panchanga.nakshatra.name}`);
+console.log(`Yoga: ${panchanga.yoga.name}`);
+console.log(`Sunrise: ${panchanga.sunrise?.toLocaleTimeString()}`);
+
+// Get formatted report
+const report = getPanchangaReport(date, latitude, longitude, timezone);
+console.log(report);
+```
+
+### TypeScript
+
+```typescript
+import { 
+    getPanchanga, 
+    AstronomicalCalculator, 
+    PanchangaInput, 
+    PanchangaOutput 
+} from 'astronomical-calculator';
+
+const input: PanchangaInput = {
+    date: new Date('2024-01-01T12:00:00Z'),
+    location: {
+        latitude: 12.972,
+        longitude: 77.594,
+        timezone: 'Asia/Kolkata'
+    }
+};
+
+const calculator = new AstronomicalCalculator();
+const panchanga: PanchangaOutput = calculator.calculatePanchanga(input);
+
+console.log(`Today's Tithi: ${panchanga.tithi.name}`);
+console.log(`Completion: ${panchanga.tithi.percentage.toFixed(1)}%`);
+
+calculator.cleanup();
+```
+
+## API Reference
+
+### Quick Functions
+
+#### `getPanchanga(date, latitude, longitude, timezone)`
+
+Calculate Panchanga for a specific date and location.
+
+**Parameters:**
+- `date` (Date): The date for calculation
+- `latitude` (number): Latitude in degrees (-90 to 90)
+- `longitude` (number): Longitude in degrees (-180 to 180)
+- `timezone` (string): IANA timezone identifier (e.g., 'Asia/Kolkata')
+
+**Returns:** `PanchangaOutput` object
+
+#### `getPanchangaReport(date, latitude, longitude, timezone)`
+
+Generate a formatted text report.
+
+**Returns:** Formatted string report
+
+### AstronomicalCalculator Class
+
+For advanced usage and multiple calculations:
+
+```javascript
+const calculator = new AstronomicalCalculator();
+
+// Calculate Panchanga
+const panchanga = calculator.calculatePanchanga({
+    date: new Date(),
+    location: {
+        latitude: 28.6139,    // Delhi
+        longitude: 77.2090,
+        timezone: 'Asia/Kolkata'
+    }
+});
+
+// Calculate planetary positions  
+const positions = calculator.calculatePlanetaryPositions(
+    new Date(), 
+    ['Sun', 'Moon', 'Mars', 'Jupiter']
+);
+
+// Always cleanup when done
+calculator.cleanup();
+```
+
+## Output Format
+
+The `PanchangaOutput` object contains:
+
+```typescript
+{
+    date: Date;
+    vara: {
+        name: string;        // e.g., "Friday"
+        number: number;      // 1-7
+    };
+    tithi: {
+        name: string;        // e.g., "Saptami"
+        number: number;      // 1-15
+        percentage: number;  // 0-100
+        paksha: 'Shukla' | 'Krishna';
+    };
+    nakshatra: {
+        name: string;        // e.g., "Revati"
+        number: number;      // 1-27
+        pada: number;        // 1-4
+    };
+    yoga: {
+        name: string;        // e.g., "Siddha"
+        number: number;      // 1-27
+    };
+    karana: {
+        name: string;        // e.g., "Bava"
+        number: number;      // 1-60
+    };
+    moonPhase: string;       // e.g., "Waxing Crescent"
+    sunrise: Date | null;
+    sunset: Date | null;
+    rahuKaal: {
+        start: Date | null;
+        end: Date | null;
+    } | null;
+}
+```
+
+## Examples
+
+### Multiple Locations
+
+```javascript
+const { AstronomicalCalculator } = require('astronomical-calculator');
+
+const calculator = new AstronomicalCalculator();
+const date = new Date();
+
+const locations = [
+    { name: 'Delhi', lat: 28.6139, lon: 77.2090, tz: 'Asia/Kolkata' },
+    { name: 'Mumbai', lat: 19.0760, lon: 72.8777, tz: 'Asia/Kolkata' },
+    { name: 'New York', lat: 40.7128, lon: -74.0060, tz: 'America/New_York' }
+];
+
+locations.forEach(loc => {
+    const panchanga = calculator.calculatePanchanga({
+        date,
+        location: { latitude: loc.lat, longitude: loc.lon, timezone: loc.tz }
+    });
+    
+    console.log(`${loc.name}: ${panchanga.tithi.name}, ${panchanga.nakshatra.name}`);
+});
+
+calculator.cleanup();
+```
+
+### Date Range
+
+```javascript
+function getPanchangaForWeek(startDate, location) {
+    const calculator = new AstronomicalCalculator();
+    const results = [];
+    
+    for (let i = 0; i < 7; i++) {
+        const date = new Date(startDate);
+        date.setDate(date.getDate() + i);
+        
+        const panchanga = calculator.calculatePanchanga({ date, location });
+        results.push({
+            date: date.toDateString(),
+            tithi: panchanga.tithi.name,
+            nakshatra: panchanga.nakshatra.name
+        });
+    }
+    
+    calculator.cleanup();
+    return results;
+}
+```
+
+## Popular Locations
+
+Here are timezone identifiers for common locations:
+
+- **India**: `Asia/Kolkata`
+- **USA East**: `America/New_York`
+- **USA West**: `America/Los_Angeles`
+- **UK**: `Europe/London`
+- **Australia**: `Australia/Sydney`
+- **Japan**: `Asia/Tokyo`
+- **Germany**: `Europe/Berlin`
+
+## Coordinate Examples
+
+| City | Latitude | Longitude |
+|------|----------|-----------|
+| Delhi, India | 28.6139 | 77.2090 |
+| Mumbai, India | 19.0760 | 72.8777 |
+| New York, USA | 40.7128 | -74.0060 |
+| London, UK | 51.5074 | -0.1278 |
+| Tokyo, Japan | 35.6762 | 139.6503 |
+
+## Understanding Panchanga
+
+**Panchanga** (Sanskrit: पञ्चाङ्ग) means "five limbs" and refers to the five key elements:
+
+1. **Vara** (वार): Day of the week
+2. **Tithi** (तिथि): Lunar day (1-15, in Shukla/Krishna paksha)
+3. **Nakshatra** (नक्षत्र): Lunar mansion (1-27)
+4. **Yoga** (योग): Astronomical combination of Sun and Moon (1-27)
+5. **Karana** (करण): Half of a tithi (1-60)
+
+**Additional Elements:**
+- **Paksha**: Lunar fortnight (Shukla = waxing, Krishna = waning)
+- **Rahu Kaal**: Inauspicious time period each day
+
+## Requirements
+
+- Node.js 16.0.0 or higher
+- Swiss Ephemeris data files (automatically handled)
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Acknowledgments
+
+- Swiss Ephemeris library for accurate astronomical calculations
+- Traditional Vedic astronomical principles
+- Based on the drik-panchanga Python implementation by Satish BD

@@ -1,0 +1,20 @@
+node_modules/
+package-lock.json
+dist/
+# Logs
+logs
+*.log
+
+# Build artifacts
+*.tsbuildinfo
+.esbuild/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

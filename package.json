@@ -1,0 +1,79 @@
+{
+  "name": "@bidyashish/panchang",
+  "version": "1.0.0",
+  "description": "Complete Hindu Panchanga calculator with Tithi, Nakshatra, Yoga, Karana, Vara calculations and Swiss Ephemeris precision",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "panchang": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "node build.js",
+    "build:old": "tsc",
+    "start": "node dist/app.js",
+    "dev": "ts-node src/app.ts",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:run": "vitest --run",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build && npm run test:run",
+    "example": "node examples/usage-example.js"
+  },
+  "dependencies": {
+    "swisseph": "^0.5.17"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "esbuild": "^0.25.8",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  },
+  "keywords": [
+    "astronomy",
+    "ephemeris",
+    "calculations",
+    "swiss-ephemeris",
+    "celestial-mechanics",
+    "panchanga",
+    "vedic-astrology",
+    "hindu-calendar",
+    "planetary-positions",
+    "lunar-calendar",
+    "tithi",
+    "nakshatra",
+    "yoga",
+    "karana",
+    "vara",
+    "sunrise",
+    "sunset",
+    "rahu-kaal",
+    "moon-phase"
+  ],
+  "author": "bidyashish",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bidyashish/panchang.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bidyashish/panchang/issues"
+  },
+  "homepage": "https://github.com/bidyashish/panchang#readme",
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
