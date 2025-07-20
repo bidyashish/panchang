@@ -1,6 +1,7 @@
 import * as swisseph from 'swisseph';
 import { Position, EclipticCoordinates, Location } from '../types/astronomical';
 import { normalizeAngle } from '../utils/index';
+import { PlanetaryPosition, Planetary } from './planetary';
 
 export interface AyanamsaInfo {
     name: string;
@@ -400,6 +401,52 @@ export class Ephemeris {
         const latitude = Math.sin(dayOfYear * 0.1) * bodyData.lat;
 
         return { longitude, latitude };
+    }
+
+    getCurrentPlanets(date: Date = new Date(), ayanamsaId: number = 1): PlanetaryPosition[] {
+        const planetary = new Planetary();
+        const planets = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn'];
+        const positions: PlanetaryPosition[] = [];
+
+        // Get ayanamsa value for the date
+        const ayanamsaInfo = this.getSpecificAyanamsa(date, ayanamsaId);
+        const ayanamsa = ayanamsaInfo ? ayanamsaInfo.degree : 24.0; // Default to approximate Lahiri
+
+        for (const planet of planets) {
+            try {
+                const position = this.calculatePosition(date, planet);
+                
+                // Convert to sidereal longitude by subtracting ayanamsa
+                const siderealLongitude = normalizeAngle(position.longitude - ayanamsa);
+                
+                // Calculate Rashi and Nakshatra
+                const rashi = planetary.calculateRashi(siderealLongitude);
+                const nakshatra = planetary.calculateNakshatra(siderealLongitude);
+
+                positions.push({
+                    planet: planet,
+                    longitude: siderealLongitude,
+                    latitude: position.latitude,
+                    rashi: rashi,
+                    nakshatra: nakshatra
+                });
+            } catch (error) {
+                console.warn(`Could not calculate position for ${planet}:`, error);
+                // Add with fallback data
+                const fallbackPos = this.getFallbackPosition(planet, date);
+                const siderealLongitude = normalizeAngle(fallbackPos.longitude - ayanamsa);
+                
+                positions.push({
+                    planet: planet,
+                    longitude: siderealLongitude,
+                    latitude: fallbackPos.latitude,
+                    rashi: planetary.calculateRashi(siderealLongitude),
+                    nakshatra: planetary.calculateNakshatra(siderealLongitude)
+                });
+            }
+        }
+
+        return positions;
     }
 
     cleanup(): void {

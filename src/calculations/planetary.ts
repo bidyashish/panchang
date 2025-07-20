@@ -19,6 +19,77 @@ export interface TithiInfo {
     isWaxing: boolean;
 }
 
+export interface RashiInfo {
+    rashi: number;
+    name: string;
+    element: string;
+    ruler: string;
+    degree: number; // Position within the rashi (0-30°)
+}
+
+export interface NakshatraInfo {
+    nakshatra: number;
+    name: string;
+    pada: number;
+    ruler: string;
+    deity: string;
+    symbol: string;
+    degree: number; // Position within nakshatra
+}
+
+export interface PlanetaryPosition {
+    planet: string;
+    longitude: number; // Sidereal longitude
+    latitude: number;
+    rashi: RashiInfo;
+    nakshatra: NakshatraInfo;
+}
+
+export const RASHIS = [
+    { name: "Mesha", element: "Fire", ruler: "Mars" },
+    { name: "Vrishabha", element: "Earth", ruler: "Venus" },
+    { name: "Mithuna", element: "Air", ruler: "Mercury" },
+    { name: "Karka", element: "Water", ruler: "Moon" },
+    { name: "Simha", element: "Fire", ruler: "Sun" },
+    { name: "Kanya", element: "Earth", ruler: "Mercury" },
+    { name: "Tula", element: "Air", ruler: "Venus" },
+    { name: "Vrishchika", element: "Water", ruler: "Mars" },
+    { name: "Dhanu", element: "Fire", ruler: "Jupiter" },
+    { name: "Makara", element: "Earth", ruler: "Saturn" },
+    { name: "Kumbha", element: "Air", ruler: "Saturn" },
+    { name: "Meena", element: "Water", ruler: "Jupiter" }
+];
+
+export const NAKSHATRAS = [
+    { name: "Ashwini", ruler: "Ketu", deity: "Ashwini Kumaras", symbol: "Horse's head" },
+    { name: "Bharani", ruler: "Venus", deity: "Yama", symbol: "Yoni" },
+    { name: "Krittika", ruler: "Sun", deity: "Agni", symbol: "Razor/flame" },
+    { name: "Rohini", ruler: "Moon", deity: "Brahma", symbol: "Cart/chariot" },
+    { name: "Mrigashira", ruler: "Mars", deity: "Soma", symbol: "Deer's head" },
+    { name: "Ardra", ruler: "Rahu", deity: "Rudra", symbol: "Teardrop" },
+    { name: "Punarvasu", ruler: "Jupiter", deity: "Aditi", symbol: "Quiver of arrows" },
+    { name: "Pushya", ruler: "Saturn", deity: "Brihaspati", symbol: "Cow's udder" },
+    { name: "Ashlesha", ruler: "Mercury", deity: "Nagas", symbol: "Serpent" },
+    { name: "Magha", ruler: "Ketu", deity: "Pitrs", symbol: "Throne" },
+    { name: "Purva Phalguni", ruler: "Venus", deity: "Bhaga", symbol: "Hammock" },
+    { name: "Uttara Phalguni", ruler: "Sun", deity: "Aryaman", symbol: "Bed" },
+    { name: "Hasta", ruler: "Moon", deity: "Savitar", symbol: "Hand" },
+    { name: "Chitra", ruler: "Mars", deity: "Vishvakarma", symbol: "Pearl" },
+    { name: "Swati", ruler: "Rahu", deity: "Vayu", symbol: "Sword" },
+    { name: "Vishakha", ruler: "Jupiter", deity: "Indragni", symbol: "Triumphal arch" },
+    { name: "Anuradha", ruler: "Saturn", deity: "Mitra", symbol: "Lotus" },
+    { name: "Jyeshtha", ruler: "Mercury", deity: "Indra", symbol: "Earring" },
+    { name: "Mula", ruler: "Ketu", deity: "Nirriti", symbol: "Bunch of roots" },
+    { name: "Purva Ashadha", ruler: "Venus", deity: "Apah", symbol: "Fan" },
+    { name: "Uttara Ashadha", ruler: "Sun", deity: "Vishvedevas", symbol: "Elephant tusk" },
+    { name: "Shravana", ruler: "Moon", deity: "Vishnu", symbol: "Ear" },
+    { name: "Dhanishtha", ruler: "Mars", deity: "Vasus", symbol: "Drum" },
+    { name: "Shatabhisha", ruler: "Rahu", deity: "Varuna", symbol: "Circle" },
+    { name: "Purva Bhadrapada", ruler: "Jupiter", deity: "Ajaikapat", symbol: "Front legs of bed" },
+    { name: "Uttara Bhadrapada", ruler: "Saturn", deity: "Ahirbudhnya", symbol: "Back legs of bed" },
+    { name: "Revati", ruler: "Mercury", deity: "Pushan", symbol: "Fish" }
+];
+
 export class Planetary {
     private readonly orbitalData: { [key: string]: OrbitalParameters } = {
         'Mercury': {
@@ -246,5 +317,43 @@ export class Planetary {
         const trueAnomalyRad = meanAnomalyRad + 2 * eccentricity * Math.sin(meanAnomalyRad);
         
         return normalizeAngle(trueAnomalyRad * 180 / Math.PI);
+    }
+
+    calculateRashi(longitude: number): RashiInfo {
+        // Each rashi is 30 degrees
+        const rashiNumber = Math.floor(longitude / 30);
+        const degreeInRashi = longitude % 30;
+        
+        const rashiData = RASHIS[rashiNumber];
+        
+        return {
+            rashi: rashiNumber + 1,
+            name: rashiData.name,
+            element: rashiData.element,
+            ruler: rashiData.ruler,
+            degree: degreeInRashi
+        };
+    }
+
+    calculateNakshatra(longitude: number): NakshatraInfo {
+        // Each nakshatra is 13.333... degrees (360/27)
+        const nakshatraSize = 360 / 27;
+        const nakshatraNumber = Math.floor(longitude / nakshatraSize);
+        const degreeInNakshatra = longitude % nakshatraSize;
+        
+        // Each nakshatra has 4 padas
+        const pada = Math.floor(degreeInNakshatra / (nakshatraSize / 4)) + 1;
+        
+        const nakshatraData = NAKSHATRAS[nakshatraNumber];
+        
+        return {
+            nakshatra: nakshatraNumber + 1,
+            name: nakshatraData.name,
+            pada: pada,
+            ruler: nakshatraData.ruler,
+            deity: nakshatraData.deity,
+            symbol: nakshatraData.symbol,
+            degree: degreeInNakshatra
+        };
     }
 }

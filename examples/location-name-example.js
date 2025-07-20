@@ -3,7 +3,7 @@
  * Shows how to include location names in the generated reports
  */
 
-const { getPanchanga, getPanchangaReport, AstronomicalCalculator } = require('../dist/index.js');
+const { getPanchanga, getPanchangaReport, AstronomicalCalculator } = require('../../dist/index.js');
 
 console.log('=== Location Name in Panchanga Reports Example ===\n');
 

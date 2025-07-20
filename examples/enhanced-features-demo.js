@@ -3,7 +3,7 @@
  * Shows the enhanced Panchanga calculator features
  */
 
-const { getPanchanga, getPanchangaReport, getAyanamsa, getSpecificAyanamsa, AstronomicalCalculator } = require('../dist/index.js');
+const { getPanchanga, getPanchangaReport, getAyanamsa, getSpecificAyanamsa, AstronomicalCalculator } = require('../../dist/index.js');
 
 console.log('🌟 Enhanced Astronomical Calculator - New Features Demo\n');
 
