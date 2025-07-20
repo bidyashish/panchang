@@ -90,10 +90,25 @@ export class AstronomicalCalculator {
     private ephemeris: Ephemeris;
     private planetary: Planetary;
 
-    constructor() {
-        this.panchanga = new Panchanga();
+    constructor(ayanamsa: number = 1) {
+        this.panchanga = new Panchanga(ayanamsa);
         this.ephemeris = new Ephemeris();
         this.planetary = new Planetary();
+    }
+    
+    /**
+     * Set the ayanamsa system for all calculations
+     * @param ayanamsaId Swiss Ephemeris ayanamsa ID (1 = Lahiri, 0 = Fagan/Bradley, etc.)
+     */
+    setAyanamsa(ayanamsaId: number): void {
+        this.panchanga.setAyanamsa(ayanamsaId);
+    }
+    
+    /**
+     * Get current ayanamsa ID being used
+     */
+    getCurrentAyanamsa(): number {
+        return this.panchanga.getAyanamsa();
     }
 
     /**
@@ -253,10 +268,11 @@ export class AstronomicalCalculator {
  * @param latitude Latitude in degrees
  * @param longitude Longitude in degrees  
  * @param timezone Timezone identifier
+ * @param ayanamsa Optional ayanamsa ID (defaults to 1 = Lahiri)
  * @returns Panchanga data
  */
-export function getPanchanga(date: Date, latitude: number, longitude: number, timezone: string): PanchangaOutput {
-    const calculator = new AstronomicalCalculator();
+export function getPanchanga(date: Date, latitude: number, longitude: number, timezone: string, ayanamsa: number = 1): PanchangaOutput {
+    const calculator = new AstronomicalCalculator(ayanamsa);
     
     try {
         return calculator.calculatePanchanga({
@@ -275,10 +291,11 @@ export function getPanchanga(date: Date, latitude: number, longitude: number, ti
  * @param longitude Longitude in degrees
  * @param timezone Timezone identifier
  * @param locationName Optional location name for display
+ * @param ayanamsa Optional ayanamsa ID (defaults to 1 = Lahiri)
  * @returns Formatted text report
  */
-export function getPanchangaReport(date: Date, latitude: number, longitude: number, timezone: string, locationName?: string): string {
-    const calculator = new AstronomicalCalculator();
+export function getPanchangaReport(date: Date, latitude: number, longitude: number, timezone: string, locationName?: string, ayanamsa: number = 1): string {
+    const calculator = new AstronomicalCalculator(ayanamsa);
     
     try {
         return calculator.generatePanchangaReport({
