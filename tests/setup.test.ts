@@ -19,8 +19,12 @@ describe('Test Setup', () => {
     });
 
     test('required modules should be loadable', () => {
-        expect(() => require('../dist/calculations/ephemeris')).not.toThrow();
-        expect(() => require('../dist/calculations/planetary')).not.toThrow();
-        expect(() => require('../dist/utils/index')).not.toThrow();
+        expect(() => require('../dist/index.js')).not.toThrow();
+        
+        // Test that the main exported functions are available
+        const panchang = require('../dist/index.js');
+        expect(panchang).toHaveProperty('getPanchanga');
+        expect(panchang).toHaveProperty('Ephemeris');
+        expect(typeof panchang.getPanchanga).toBe('function');
     });
 });

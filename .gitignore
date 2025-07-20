@@ -1,6 +1,7 @@
 node_modules/
 package-lock.json
 dist/
+
 # Logs
 logs
 *.log
@@ -8,6 +9,11 @@ logs
 # Build artifacts
 *.tsbuildinfo
 .esbuild/
+*.tgz
+
+# Coverage reports  
+coverage/
+.nyc_output/
 
 # IDE files
 .vscode/
@@ -18,3 +24,7 @@ logs
 # OS files
 .DS_Store
 Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
