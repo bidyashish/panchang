@@ -1,12 +1,12 @@
 {
   "name": "@bidyashish/panchang",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Complete Hindu Panchanga calculator with Tithi, Nakshatra, Yoga, Karana, Vara calculations and Swiss Ephemeris precision",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "bin": {
-    "panchang": "dist/cli.js"
+    "panchang": "./dist/cli.js"
   },
   "exports": {
     ".": {
