@@ -6,7 +6,7 @@
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "bin": {
-    "panchang": "./dist/cli.js"
+    "panchang": "dist/cli.js"
   },
   "exports": {
     ".": {
@@ -62,7 +62,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/bidyashish/panchang.git"
+    "url": "git+https://github.com/bidyashish/panchang.git"
   },
   "bugs": {
     "url": "https://github.com/bidyashish/panchang/issues"

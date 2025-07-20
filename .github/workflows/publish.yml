@@ -31,10 +31,14 @@ jobs:
     - name: Build package
       run: npm run build
       
+    - name: Verify package contents
+      run: npm pack --dry-run
+      
+    - name: Login to NPM
+      run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+      
     - name: Publish to NPM
       run: npm publish
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
@@ -98,7 +102,11 @@ jobs:
     - name: Build package
       run: npm run build
       
+    - name: Verify package contents
+      run: npm pack --dry-run
+      
+    - name: Login to GitHub Packages
+      run: echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" > ~/.npmrc
+      
     - name: Publish to GitHub Packages
       run: npm publish
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
