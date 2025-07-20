@@ -2,6 +2,7 @@
 
 A comprehensive TypeScript/JavaScript library for astronomical calculations with traditional Hindu Panchanga support, powered by Swiss Ephemeris.
 
+[![Node.js Package](https://github.com/bidyashish/panchang/actions/workflows/npm-publish.yml/badge.svg)](https://github.com/bidyashish/panchang/actions/workflows/npm-publish.yml)
 [![npm version](https://badge.fury.io/js/@bidyashish%2Fpanchang.svg)](https://badge.fury.io/js/@bidyashish%2Fpanchang)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub](https://img.shields.io/badge/GitHub-bidyashish%2Fpanchang-blue)](https://github.com/bidyashish/panchang)
