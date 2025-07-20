@@ -204,25 +204,48 @@ export class Planetary {
             'Trayodashi', 'Chaturdashi', 'Purnima/Amavasya'
         ];
 
-        // Calculate lunar phase (longitude difference between Moon and Sun)
-        // This follows the Python reference implementation
-        let moonPhase = normalizeAngle(moonLongitude - sunLongitude);
+        // Calculate elongation (longitude difference between Moon and Sun)
+        // This follows the correct astronomical definition
+        let elongation = normalizeAngle(moonLongitude - sunLongitude);
         
         // Each tithi spans 12 degrees (360° / 30 tithis)
         const tithiLength = 12;
-        const tithiNumber = Math.ceil(moonPhase / tithiLength);
-        const percentage = (moonPhase % tithiLength) / tithiLength * 100;
         
-        // Determine paksha and adjust tithi number
-        const isWaxing = tithiNumber <= 15;
-        const adjustedTithi = tithiNumber <= 15 ? tithiNumber : (tithiNumber - 15);
+        // Calculate tithi number (1-30)
+        const tithiNumber = Math.floor(elongation / tithiLength) + 1;
         
-        // Handle edge case for Amavasya/Purnima
-        const finalTithi = adjustedTithi === 0 ? 15 : adjustedTithi;
+        // Calculate percentage completion of current tithi
+        const remainder = elongation % tithiLength;
+        const percentage = (remainder / tithiLength) * 100;
+        
+        // Determine paksha (fortnight) and adjust tithi
+        let finalTithi: number;
+        let isWaxing: boolean;
+        let tithiName: string;
+        
+        if (tithiNumber <= 15) {
+            // Shukla Paksha (Waxing Moon) - Tithis 1-15
+            isWaxing = true;
+            finalTithi = tithiNumber;
+            if (finalTithi === 15) {
+                tithiName = 'Purnima'; // Full Moon
+            } else {
+                tithiName = tithiNames[finalTithi - 1];
+            }
+        } else {
+            // Krishna Paksha (Waning Moon) - Tithis 16-30, numbered as 1-15
+            isWaxing = false;
+            finalTithi = tithiNumber - 15;
+            if (finalTithi === 15) {
+                tithiName = 'Amavasya'; // New Moon
+            } else {
+                tithiName = tithiNames[finalTithi - 1];
+            }
+        }
         
         return {
             tithi: finalTithi,
-            name: tithiNames[Math.min(finalTithi - 1, 14)],
+            name: tithiName,
             percentage: percentage,
             isWaxing: isWaxing
         };
@@ -237,12 +260,18 @@ export class Planetary {
             'Brahma', 'Indra', 'Vaidhriti'
         ];
 
+        // Yoga is the sum of Sun and Moon longitudes
+        // Each yoga spans 13°20' (360° / 27 yogas = 13.333...°)
         const sum = normalizeAngle(sunLongitude + moonLongitude);
-        const yogaNumber = Math.floor(sum / (360 / 27)) + 1;
+        const yogaArc = 360 / 27;  // 13.333... degrees per yoga
+        const yogaNumber = Math.floor(sum / yogaArc) + 1;
+        
+        // Ensure yoga number is within valid range (1-27)
+        const validYogaNumber = Math.max(1, Math.min(27, yogaNumber));
         
         return {
-            yoga: yogaNumber,
-            name: yogaNames[yogaNumber - 1] || 'Unknown'
+            yoga: validYogaNumber,
+            name: yogaNames[validYogaNumber - 1] || 'Unknown'
         };
     }
 
@@ -252,27 +281,37 @@ export class Planetary {
             'Shakuni', 'Chatushpada', 'Naga', 'Kimstughna'
         ];
 
-        // Calculate lunar phase similar to Python reference
-        const moonPhase = normalizeAngle(moonLongitude - sunLongitude);
+        // Calculate elongation (longitude difference between Moon and Sun)
+        const elongation = normalizeAngle(moonLongitude - sunLongitude);
         
-        // Each karana spans 6 degrees (360° / 60 karanas)
-        const karanaNumber = Math.ceil(moonPhase / 6);
+        // Each karana spans 6 degrees (half a tithi)
+        // There are 60 karanas in a lunar month (30 tithis × 2 karanas per tithi)
+        const karanaArc = 6; // degrees
+        const karanaNumber = Math.floor(elongation / karanaArc) + 1;
         
-        // Handle the cyclic nature of karanas as per Python implementation
-        // First 7 karanas repeat 8 times (karanas 1-56), then 4 fixed karanas (57-60)
+        // Handle the cyclic nature of karanas
         let karanaIndex: number;
-        if (karanaNumber <= 56) {
-            karanaIndex = ((karanaNumber - 1) % 7);
+        let finalKaranaNumber: number;
+        
+        if (karanaNumber <= 57) {
+            // First 57 karanas: 7 movable karanas repeat 8 times, plus one more cycle starts
+            karanaIndex = (karanaNumber - 1) % 7;
+            finalKaranaNumber = karanaNumber;
+        } else if (karanaNumber <= 60) {
+            // Last 4 karanas (58-60, plus one special case): fixed karanas
+            karanaIndex = 7 + (karanaNumber - 58);
+            finalKaranaNumber = karanaNumber;
         } else {
-            // Special karanas for the last 4 positions
-            karanaIndex = 7 + ((karanaNumber - 57) % 4);
+            // Handle overflow (shouldn't happen, but safety check)
+            karanaIndex = (karanaNumber - 1) % 7;
+            finalKaranaNumber = ((karanaNumber - 1) % 60) + 1;
         }
         
         // Ensure we don't go beyond array bounds
-        karanaIndex = Math.min(karanaIndex, karanaNames.length - 1);
+        karanaIndex = Math.min(Math.max(0, karanaIndex), karanaNames.length - 1);
         
         return {
-            karana: karanaNumber,
+            karana: finalKaranaNumber,
             name: karanaNames[karanaIndex]
         };
     }

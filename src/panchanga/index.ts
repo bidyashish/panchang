@@ -37,30 +37,49 @@ export class Panchanga {
 
     calculatePanchanga(date: Date, location: Location, useSidereal: boolean = true): PanchangaData {
         // Traditional Panchanga calculations should be done at sunrise
-        // This follows the Python reference implementation
-        const sunrise = this.ephemeris.calculateSunrise(date, location) || date;
+        // This follows the correct Vedic astronomical principles
+        const sunrise = this.ephemeris.calculateSunrise(date, location);
+        const calculationTime = sunrise || date; // Use sunrise if available, otherwise input date
         
-        // Calculate Sun and Moon positions at sunrise
-        const sunPosition = useSidereal ? 
-            this.ephemeris.calculateSiderealPosition(sunrise, 'Sun') :
-            this.ephemeris.calculatePosition(sunrise, 'Sun');
+        let sunPosition: any;
+        let moonPosition: any;
+        
+        if (useSidereal) {
+            // Calculate sidereal positions using Lahiri ayanamsa
+            const ayanamsa = this.ephemeris.calculateLahiriAyanamsa(calculationTime);
             
-        const moonPosition = useSidereal ?
-            this.ephemeris.calculateSiderealPosition(sunrise, 'Moon') :
-            this.ephemeris.calculatePosition(sunrise, 'Moon');
+            // Get tropical positions first
+            const sunTropical = this.ephemeris.calculatePosition(calculationTime, 'Sun');
+            const moonTropical = this.ephemeris.calculatePosition(calculationTime, 'Moon');
+            
+            // Convert to sidereal by subtracting ayanamsa
+            sunPosition = {
+                longitude: this.normalizeAngle(sunTropical.longitude - ayanamsa),
+                latitude: sunTropical.latitude
+            };
+            
+            moonPosition = {
+                longitude: this.normalizeAngle(moonTropical.longitude - ayanamsa),
+                latitude: moonTropical.latitude
+            };
+        } else {
+            // Use tropical positions
+            sunPosition = this.ephemeris.calculatePosition(calculationTime, 'Sun');
+            moonPosition = this.ephemeris.calculatePosition(calculationTime, 'Moon');
+        }
 
-        // Calculate Panchanga elements
+        // Calculate Panchanga elements using corrected formulas
         const tithi = this.planetary.calculateTithi(sunPosition.longitude, moonPosition.longitude);
         const nakshatra = this.ephemeris.calculateNakshatra(moonPosition.longitude);
         const yoga = this.planetary.calculateYoga(sunPosition.longitude, moonPosition.longitude);
         const karana = this.planetary.calculateKarana(sunPosition.longitude, moonPosition.longitude);
-        const vara = this.getVara(date); // Vara is based on the calendar date, not sunrise time
+        const vara = this.getVara(date); // Vara is based on the civil calendar date
 
         // Calculate sunrise and sunset for the day
         const sunriseTime = this.ephemeris.calculateSunrise(date, location);
         const sunsetTime = this.ephemeris.calculateSunset(date, location);
 
-        // Determine moon phase based on sunrise positions
+        // Determine moon phase based on positions
         const moonPhase = this.getMoonPhase(sunPosition.longitude, moonPosition.longitude);
 
         return {
@@ -81,11 +100,24 @@ export class Panchanga {
             moonPhase
         };
     }
+    
+    private normalizeAngle(angle: number): number {
+        let normalized = angle % 360;
+        if (normalized < 0) {
+            normalized += 360;
+        }
+        return normalized;
+    }
 
     private getVara(date: Date): { vara: number; name: string } {
-        // Follow Python reference implementation: vaara(jd) = int(ceil(jd + 1) % 7)
+        // Correct Vara (weekday) calculation based on Julian Day Number
+        // The astronomical day starts at noon, but for calendar purposes
+        // we use the civil day starting at midnight
         const jd = this.dateToJulian(date);
-        const varaNumber = Math.floor((jd + 1) % 7);
+        
+        // Standard formula: vara = (JD + 1.5) mod 7
+        // JD 0 corresponds to Monday, so we adjust accordingly
+        const varaNumber = Math.floor((jd + 1.5) % 7);
         
         return {
             vara: varaNumber,
@@ -94,23 +126,29 @@ export class Panchanga {
     }
 
     /**
-     * Convert Date to Julian Day Number (following Python reference implementation)
+     * Convert Date to Julian Day Number using accurate algorithm
      */
     private dateToJulian(date: Date): number {
         const year = date.getUTCFullYear();
         const month = date.getUTCMonth() + 1;
         const day = date.getUTCDate();
-        const hour = date.getUTCHours() + 
-                    date.getUTCMinutes() / 60 + 
-                    date.getUTCSeconds() / 3600;
+        const hour = date.getUTCHours();
+        const minute = date.getUTCMinutes();
+        const second = date.getUTCSeconds();
+        const millisecond = date.getUTCMilliseconds();
 
-        // Use the standard Julian Day calculation
+        // Convert time to decimal hours
+        const decimalHour = hour + minute / 60.0 + second / 3600.0 + millisecond / 3600000.0;
+
+        // Standard Julian Day calculation algorithm
         let a = Math.floor((14 - month) / 12);
         let y = year + 4800 - a;
         let m = month + 12 * a - 3;
         
         let jd = day + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
-        jd += (hour / 24.0);
+        
+        // Add the time component
+        jd += (decimalHour - 12.0) / 24.0;
         
         return jd;
     }
@@ -130,6 +168,7 @@ export class Panchanga {
 
     /**
      * Calculate Rahu Kaal (inauspicious time period)
+     * Rahu Kaal is 1/8th of the day length, occurring at different times based on weekday
      */
     calculateRahuKaal(date: Date, location: Location): { start: Date | null; end: Date | null } | null {
         const sunrise = this.ephemeris.calculateSunrise(date, location);
@@ -138,25 +177,27 @@ export class Panchanga {
         if (!sunrise || !sunset) return null;
 
         const dayLength = sunset.getTime() - sunrise.getTime();
-        const oneTenth = dayLength / 8; // Divide day into 8 parts
+        const oneEighth = dayLength / 8; // Divide day into 8 equal parts
         
+        // Get the day of week (0 = Sunday)
         const dayOfWeek = date.getDay();
-        let rahuKaalStart: number;
+        let rahuKaalPeriod: number;
 
-        // Rahu Kaal timing based on day of week
+        // Correct Rahu Kaal timing based on weekday
+        // Each period is 1/8th of the day from sunrise
         switch (dayOfWeek) {
-            case 0: rahuKaalStart = 4; break; // Sunday - 5th part
-            case 1: rahuKaalStart = 1; break; // Monday - 2nd part  
-            case 2: rahuKaalStart = 6; break; // Tuesday - 7th part
-            case 3: rahuKaalStart = 3; break; // Wednesday - 4th part
-            case 4: rahuKaalStart = 2; break; // Thursday - 3rd part
-            case 5: rahuKaalStart = 5; break; // Friday - 6th part
-            case 6: rahuKaalStart = 0; break; // Saturday - 1st part
-            default: rahuKaalStart = 0;
+            case 0: rahuKaalPeriod = 4; break; // Sunday - 5th period (4th index)
+            case 1: rahuKaalPeriod = 1; break; // Monday - 2nd period (1st index)
+            case 2: rahuKaalPeriod = 6; break; // Tuesday - 7th period (6th index)
+            case 3: rahuKaalPeriod = 3; break; // Wednesday - 4th period (3rd index)
+            case 4: rahuKaalPeriod = 2; break; // Thursday - 3rd period (2nd index)
+            case 5: rahuKaalPeriod = 5; break; // Friday - 6th period (5th index)
+            case 6: rahuKaalPeriod = 0; break; // Saturday - 1st period (0th index)
+            default: rahuKaalPeriod = 0;
         }
 
-        const startTime = new Date(sunrise.getTime() + (rahuKaalStart * oneTenth));
-        const endTime = new Date(startTime.getTime() + oneTenth);
+        const startTime = new Date(sunrise.getTime() + (rahuKaalPeriod * oneEighth));
+        const endTime = new Date(startTime.getTime() + oneEighth);
 
         return { start: startTime, end: endTime };
     }
