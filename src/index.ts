@@ -28,6 +28,8 @@ export interface PanchangaInput {
         longitude: number;
         /** Timezone identifier (e.g., 'Asia/Kolkata', 'America/New_York') */
         timezone: string;
+        /** Optional location name for display in reports */
+        name?: string;
         /** Altitude in meters (optional, defaults to 0) */
         altitude?: number;
     };
@@ -183,7 +185,15 @@ export class AstronomicalCalculator {
         
         let report = `\n=== PANCHANGA REPORT ===\n`;
         report += `Date: ${panchanga.date.toDateString()}\n`;
-        report += `Location: ${input.location.latitude}°N, ${input.location.longitude}°E\n`;
+        
+        // Include location name if provided
+        if (input.location.name) {
+            report += `Location: ${input.location.name}\n`;
+            report += `Coordinates: ${input.location.latitude}°N, ${input.location.longitude}°E\n`;
+        } else {
+            report += `Location: ${input.location.latitude}°N, ${input.location.longitude}°E\n`;
+        }
+        
         report += `Timezone: ${input.location.timezone}\n\n`;
         
         report += `VARA (Weekday): ${panchanga.vara.name}\n`;
@@ -215,6 +225,25 @@ export class AstronomicalCalculator {
         this.ephemeris.cleanup();
         this.panchanga.cleanup();
     }
+
+    /**
+     * Get all available ayanamsa systems with their degrees for a given date
+     * @param date Date for ayanamsa calculation
+     * @returns Array of ayanamsa information
+     */
+    public getAyanamsa(date: Date = new Date()) {
+        return this.ephemeris.getAyanamsa(date);
+    }
+
+    /**
+     * Get a specific ayanamsa value by name or ID
+     * @param ayanamsaId Ayanamsa ID (number) or name (string)
+     * @param date Date for calculation
+     * @returns Ayanamsa information or null if not found
+     */
+    public getSpecificAyanamsa(ayanamsaId: number | string, date: Date = new Date()) {
+        return this.ephemeris.getSpecificAyanamsa(date, ayanamsaId);
+    }
 }
 
 // Convenience functions for quick use
@@ -245,18 +274,50 @@ export function getPanchanga(date: Date, latitude: number, longitude: number, ti
  * @param latitude Latitude in degrees
  * @param longitude Longitude in degrees
  * @param timezone Timezone identifier
+ * @param locationName Optional location name for display
  * @returns Formatted text report
  */
-export function getPanchangaReport(date: Date, latitude: number, longitude: number, timezone: string): string {
+export function getPanchangaReport(date: Date, latitude: number, longitude: number, timezone: string, locationName?: string): string {
     const calculator = new AstronomicalCalculator();
     
     try {
         return calculator.generatePanchangaReport({
             date,
-            location: { latitude, longitude, timezone }
+            location: { latitude, longitude, timezone, name: locationName }
         });
     } finally {
         calculator.cleanup();
+    }
+}
+
+/**
+ * Quick function to get all ayanamsa systems with their degrees for a given date
+ * @param date Date for ayanamsa calculation (defaults to current date)
+ * @returns Array of ayanamsa information including name, ID, degree, and description
+ */
+export function getAyanamsa(date: Date = new Date()) {
+    const ephemeris = new Ephemeris();
+    
+    try {
+        return ephemeris.getAyanamsa(date);
+    } finally {
+        ephemeris.cleanup();
+    }
+}
+
+/**
+ * Quick function to get a specific ayanamsa value by name or ID
+ * @param ayanamsaId Ayanamsa ID (number) or name (string)
+ * @param date Date for calculation (defaults to current date)
+ * @returns Ayanamsa information or null if not found
+ */
+export function getSpecificAyanamsa(ayanamsaId: number | string, date: Date = new Date()) {
+    const ephemeris = new Ephemeris();
+    
+    try {
+        return ephemeris.getSpecificAyanamsa(date, ayanamsaId);
+    } finally {
+        ephemeris.cleanup();
     }
 }
 

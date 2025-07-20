@@ -10,6 +10,7 @@ import { normalizeAngle, formatDate } from '../utils/index';
 
 export interface PanchangaData {
     date: Date;
+    location?: { latitude: number; longitude: number; timezone: string; name?: string };
     tithi: TithiInfo;
     nakshatra: { nakshatra: number; pada: number; name: string };
     yoga: { yoga: number; name: string };
@@ -64,6 +65,12 @@ export class Panchanga {
 
         return {
             date,
+            location: { 
+                latitude: location.latitude, 
+                longitude: location.longitude, 
+                timezone: location.timezone || 'UTC',
+                name: location.name
+            },
             tithi,
             nakshatra,
             yoga,
@@ -158,9 +165,24 @@ export class Panchanga {
      * Generate formatted Panchanga report
      */
     generateReport(panchangaData: PanchangaData): string {
-        const { date, tithi, nakshatra, yoga, karana, vara, sunrise, sunset, moonPhase } = panchangaData;
+        const { date, location, tithi, nakshatra, yoga, karana, vara, sunrise, sunset, moonPhase } = panchangaData;
         
-        let report = `\n=== PANCHANGA for ${formatDate(date)} ===\n\n`;
+        let report = `\n=== PANCHANGA for ${formatDate(date)} ===\n`;
+        
+        // Add location information if available
+        if (location) {
+            if (location.name) {
+                report += `Location: ${location.name}\n`;
+                report += `Coordinates: ${location.latitude}°N, ${location.longitude}°E\n`;
+            } else {
+                report += `Location: ${location.latitude}°N, ${location.longitude}°E\n`;
+            }
+            if (location.timezone) {
+                report += `Timezone: ${location.timezone}\n`;
+            }
+        }
+        
+        report += '\n';
         
         // Basic elements
         report += `VARA (Day): ${vara.name}\n`;

@@ -2,6 +2,13 @@ import * as swisseph from 'swisseph';
 import { Position, EclipticCoordinates, Location } from '../types/astronomical';
 import { normalizeAngle } from '../utils/index';
 
+export interface AyanamsaInfo {
+    name: string;
+    id: number;
+    degree: number;
+    description: string;
+}
+
 export interface CelestialPosition extends Position {
     distance: number;
     longitudeSpeed: number;
@@ -92,6 +99,141 @@ export class Ephemeris {
             const year = date.getFullYear();
             const t = (year - 1900) / 100;
             return 22.460 + 1.39 * t - 0.01 * t * t;
+        }
+    }
+
+    /**
+     * Get all available ayanamsa systems with their degrees for a given date
+     * @param date Date for ayanamsa calculation
+     * @returns Array of ayanamsa information including name, ID, degree, and description
+     */
+    getAyanamsa(date: Date): AyanamsaInfo[] {
+        const jd = this.dateToJulian(date);
+        
+        // Swiss Ephemeris Ayanamsa Systems (SE_SIDM constants)
+        const ayanamsaSystems = [
+            { id: 0, name: 'Fagan/Bradley', description: 'Fagan/Bradley (Western Sidereal)' },
+            { id: 1, name: 'Lahiri', description: 'Lahiri (Chitrapaksha) - Official Indian Government' },
+            { id: 2, name: 'De Luce', description: 'De Luce ayanamsa' },
+            { id: 3, name: 'Raman', description: 'B.V. Raman ayanamsa' },
+            { id: 4, name: 'Ushashashi', description: 'Ushashashi ayanamsa' },
+            { id: 5, name: 'Krishnamurti', description: 'Krishnamurti ayanamsa (KP System)' },
+            { id: 6, name: 'Djwhal Khul', description: 'Djwhal Khul ayanamsa' },
+            { id: 7, name: 'Yukteshwar', description: 'Sri Yukteshwar ayanamsa' },
+            { id: 8, name: 'J.N. Bhasin', description: 'J.N. Bhasin ayanamsa' },
+            { id: 9, name: 'Babylonian (Kugler 1)', description: 'Babylonian ayanamsa (Kugler 1)' },
+            { id: 10, name: 'Babylonian (Kugler 2)', description: 'Babylonian ayanamsa (Kugler 2)' },
+            { id: 11, name: 'Babylonian (Kugler 3)', description: 'Babylonian ayanamsa (Kugler 3)' },
+            { id: 12, name: 'Babylonian (Huber)', description: 'Babylonian ayanamsa (Huber)' },
+            { id: 13, name: 'Eta Piscium', description: 'Eta Piscium ayanamsa' },
+            { id: 14, name: 'Aldebaran 15 Tau', description: 'Aldebaran at 15° Taurus' },
+            { id: 15, name: 'Hipparchos', description: 'Hipparchos ayanamsa' },
+            { id: 16, name: 'Sassanian', description: 'Sassanian ayanamsa' },
+            { id: 17, name: 'Galact. Center (Brand)', description: 'Galactic Center ayanamsa (Brand)' },
+            { id: 18, name: 'J2000', description: 'J2000.0 reference frame' },
+            { id: 19, name: 'J1900', description: 'J1900.0 reference frame' },
+            { id: 20, name: 'B1950', description: 'B1950.0 reference frame' },
+            { id: 21, name: 'Suryasiddhanta', description: 'Suryasiddhanta ayanamsa' },
+            { id: 22, name: 'Suryasiddhanta (mean Sun)', description: 'Suryasiddhanta (mean Sun)' },
+            { id: 23, name: 'Aryabhata', description: 'Aryabhata ayanamsa' },
+            { id: 24, name: 'Aryabhata 522', description: 'Aryabhata 522 CE ayanamsa' },
+            { id: 25, name: 'Babylonian (Britton)', description: 'Babylonian ayanamsa (Britton)' },
+            { id: 26, name: 'True Chitra', description: 'True Chitra ayanamsa' },
+            { id: 27, name: 'True Revati', description: 'True Revati ayanamsa' },
+            { id: 28, name: 'True Pushya', description: 'True Pushya ayanamsa' },
+            { id: 29, name: 'Galactic (Gil Brand)', description: 'Galactic Center (Gil Brand)' },
+            { id: 30, name: 'Galactic Equator (IAU1958)', description: 'Galactic Equator (IAU1958)' },
+            { id: 31, name: 'Galactic Equator', description: 'Galactic Equator' },
+            { id: 32, name: 'Galactic Equator (mid-Mula)', description: 'Galactic Equator at mid-Mula' },
+            { id: 33, name: 'Skydram (Mardyks)', description: 'Skydram ayanamsa (Mardyks)' },
+            { id: 34, name: 'True Mula', description: 'True Mula ayanamsa' },
+            { id: 35, name: 'Dhruva Galactic Center', description: 'Dhruva Galactic Center ayanamsa' },
+            { id: 36, name: 'Aryabhata Mean Sun', description: 'Aryabhata Mean Sun ayanamsa' },
+            { id: 37, name: 'Lahiri VP285', description: 'Lahiri VP285 ayanamsa' },
+            { id: 38, name: 'Krishnamurti VP291', description: 'Krishnamurti VP291 ayanamsa' },
+            { id: 39, name: 'Lahiri ICRC', description: 'Lahiri ICRC ayanamsa' }
+        ];
+
+        const results: AyanamsaInfo[] = [];
+
+        ayanamsaSystems.forEach(system => {
+            try {
+                // Set the ayanamsa mode
+                swisseph.swe_set_sid_mode(system.id, 0, 0);
+                
+                // Get ayanamsa value for the given date
+                const ayanamsaValue = swisseph.swe_get_ayanamsa_ut(jd);
+                
+                results.push({
+                    name: system.name,
+                    id: system.id,
+                    degree: ayanamsaValue || this.getFallbackAyanamsa(system.id, date),
+                    description: system.description
+                });
+            } catch (error) {
+                // If Swiss Ephemeris fails, use fallback calculation
+                results.push({
+                    name: system.name,
+                    id: system.id,
+                    degree: this.getFallbackAyanamsa(system.id, date),
+                    description: system.description
+                });
+            }
+        });
+
+        // Sort by degree value for easier comparison
+        results.sort((a, b) => a.degree - b.degree);
+        
+        return results;
+    }
+
+    /**
+     * Get a specific ayanamsa value by name or ID
+     * @param date Date for calculation
+     * @param ayanamsaId Ayanamsa ID or name
+     * @returns Ayanamsa information
+     */
+    getSpecificAyanamsa(date: Date, ayanamsaId: number | string): AyanamsaInfo | null {
+        const allAyanamsas = this.getAyanamsa(date);
+        
+        if (typeof ayanamsaId === 'number') {
+            return allAyanamsas.find(a => a.id === ayanamsaId) || null;
+        } else {
+            // First try exact match
+            const exactMatch = allAyanamsas.find(a => 
+                a.name.toLowerCase() === ayanamsaId.toLowerCase()
+            );
+            
+            if (exactMatch) {
+                return exactMatch;
+            }
+            
+            // Then try partial match
+            return allAyanamsas.find(a => 
+                a.name.toLowerCase().includes(ayanamsaId.toLowerCase())
+            ) || null;
+        }
+    }
+
+    private getFallbackAyanamsa(systemId: number, date: Date): number {
+        const year = date.getFullYear();
+        const t = (year - 1900) / 100;
+        
+        // Approximate calculations for different ayanamsa systems
+        switch (systemId) {
+            case 0: // Fagan/Bradley
+                return 24.740 + 1.39 * t - 0.01 * t * t;
+            case 1: // Lahiri
+                return 22.460 + 1.39 * t - 0.01 * t * t;
+            case 3: // Raman
+                return 21.580 + 1.39 * t - 0.01 * t * t;
+            case 5: // Krishnamurti
+                return 23.230 + 1.39 * t - 0.01 * t * t;
+            case 7: // Yukteshwar
+                return 22.460 + 1.39 * t - 0.01 * t * t;
+            default:
+                // Default to Lahiri approximation
+                return 22.460 + 1.39 * t - 0.01 * t * t;
         }
     }
 

@@ -42,6 +42,7 @@ export interface Location {
     longitude: number; // degrees
     altitude?: number; // meters above sea level
     timezone?: string; // IANA timezone
+    name?: string;     // optional location name for display
 }
 
 export interface TimeRange {
