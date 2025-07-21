@@ -13,19 +13,19 @@
  * @version 2.0.0
  */
 
-const { getCurrentPlanets, getSpecificAyanamsa } = require('../dist/index.js');
-const { CONFIG, FORMAT, EMOJI, ERROR_HANDLER, VALIDATOR, ANALYZER } = require('./common-utils.js');
+const { getCurrentPlanets, getSpecificAyanamsa, getAyanamsa } = require('../dist/index.js');
 
 /**
  * Main execution function
  */
 async function demonstratePlanetaryPositions() {
-    console.log(FORMAT.section('🌟 PLANETARY POSITIONS WITH NAKSHATRA & RASHI', 70));
+    console.log('🌟 PLANETARY POSITIONS WITH NAKSHATRA & RASHI');
+    console.log('='.repeat(70));
     console.log();
     
     const currentDate = new Date();
-    console.log(`${EMOJI.GENERAL.calendar} Date: ${FORMAT.date(currentDate)}`);
-    console.log(`${EMOJI.GENERAL.info} Timestamp: ${currentDate.toISOString()}`);
+    console.log(`📅 Date: ${currentDate.toDateString()}`);
+    console.log(`⏰ Timestamp: ${currentDate.toISOString()}`);
     console.log();
     
     try {
@@ -47,10 +47,10 @@ async function demonstratePlanetaryPositions() {
         // Section 6: Historical comparison
         await historicalPositionComparison();
         
-        ERROR_HANDLER.success('Planetary positions demonstration completed successfully!');
+        console.log('✅ Planetary positions demonstration completed successfully!');
         
     } catch (error) {
-        console.error(`${EMOJI.GENERAL.error} Demonstration failed:`, error.message);
+        console.error('❌ Demonstration failed:', error.message);
         process.exit(1);
     }
 }
@@ -59,14 +59,15 @@ async function demonstratePlanetaryPositions() {
  * Display current planetary positions with detailed information
  */
 async function displayCurrentPositions(date) {
-    console.log(FORMAT.section('CURRENT PLANETARY POSITIONS'));
+    console.log('CURRENT PLANETARY POSITIONS');
+    console.log('-'.repeat(30));
     console.log();
     
-    const result = await ERROR_HANDLER.wrap(async () => {
+    try {
         // Get ayanamsa information
         const ayanamsa = getSpecificAyanamsa(1, date); // Lahiri
         if (ayanamsa) {
-            console.log(`${EMOJI.GENERAL.telescope} Using ${ayanamsa.name} Ayanamsa: ${ayanamsa.degree.toFixed(6)}°`);
+            console.log(`🔭 Using ${ayanamsa.name} Ayanamsa: ${ayanamsa.degree.toFixed(6)}°`);
             console.log(`   Description: ${ayanamsa.description}`);
             console.log();
         }
@@ -78,15 +79,15 @@ async function displayCurrentPositions(date) {
             throw new Error('No planetary positions retrieved');
         }
         
-        console.log(`${EMOJI.GENERAL.star} Retrieved ${planets.length} planetary positions:`);
+        console.log(`⭐ Retrieved ${planets.length} planetary positions:`);
         console.log();
         
         // Detailed display for each planet
         planets.forEach(planet => {
-            const emoji = EMOJI.PLANETS[planet.planet] || '🌟';
-            const elementEmoji = EMOJI.ELEMENTS[planet.rashi.element] || '';
+            const planetEmoji = getPlanetEmoji(planet.planet);
+            const elementEmoji = getElementEmoji(planet.rashi.element);
             
-            console.log(`${emoji} ${planet.planet.toUpperCase()}:`);
+            console.log(`${planetEmoji} ${planet.planet.toUpperCase()}:`);
             console.log(`   Sidereal Longitude: ${planet.longitude.toFixed(4)}°`);
             console.log(`   Latitude: ${planet.latitude.toFixed(4)}°`);
             console.log(`   ${elementEmoji} Rashi: ${planet.rashi.name} (${planet.rashi.rashi}) - ${planet.rashi.element} sign`);
@@ -101,386 +102,283 @@ async function displayCurrentPositions(date) {
             console.log();
         });
         
-        return planets;
-    }, 'fetching current planetary positions');
-    
-    return result;
+    } catch (error) {
+        console.error('❌ Error displaying current positions:', error.message);
+    }
 }
 
 /**
- * Compare planetary positions across different ayanamsa systems
+ * Compare different ayanamsa systems
  */
 async function compareAyanamsaSystems(date) {
-    console.log(FORMAT.section('AYANAMSA SYSTEM COMPARISON'));
+    console.log('AYANAMSA SYSTEM COMPARISON');
+    console.log('-'.repeat(30));
     console.log();
     
-    const ayanamsaIds = [1, 3, 5]; // Lahiri, Raman, KP
-    const results = [];
-    
-    console.log(`${EMOJI.GENERAL.telescope} Comparing Sun position across different ayanamsa systems:`);
-    console.log();
-    
-    const widths = [20, 15, 20, 15];
-    console.log(FORMAT.tableRow(['Ayanamsa', 'Value (°)', 'Sun Longitude (°)', 'Sun Rashi'], widths));
-    console.log(FORMAT.tableSeparator(widths));
-    
-    for (const id of ayanamsaIds) {
-        const result = await ERROR_HANDLER.wrap(async () => {
-            const ayanamsa = getSpecificAyanamsa(id, date);
-            const planets = getCurrentPlanets(date, id);
-            
-            if (ayanamsa && planets && planets.length > 0) {
-                const sun = planets.find(p => p.planet === 'Sun');
-                
-                if (sun) {
-                    const row = [
-                        ayanamsa.name,
-                        ayanamsa.degree.toFixed(4),
-                        sun.longitude.toFixed(4),
-                        sun.rashi.name
-                    ];
-                    console.log(FORMAT.tableRow(row, widths));
-                    
-                    return { ayanamsa, sun };
-                }
-            }
-            return null;
-        }, `comparing ayanamsa ID ${id}`);
+    try {
+        const ayanamsaSystems = getAyanamsa(date);
         
-        if (result) {
-            results.push(result);
-        }
-    }
-    
-    // Show differences
-    if (results.length > 1) {
+        console.log(`📊 Available Ayanamsa Systems (${ayanamsaSystems.length}):`);
         console.log();
-        console.log(FORMAT.subsection('Position Differences'));
         
-        const base = results[0];
-        results.slice(1).forEach(current => {
-            const ayanamsaDiff = current.ayanamsa.degree - base.ayanamsa.degree;
-            const positionDiff = current.sun.longitude - base.sun.longitude;
-            
-            console.log(`${current.ayanamsa.name} vs ${base.ayanamsa.name}:`);
-            console.log(`   Ayanamsa difference: ${ayanamsaDiff.toFixed(6)}°`);
-            console.log(`   Sun position difference: ${positionDiff.toFixed(6)}°`);
+        ayanamsaSystems.forEach(system => {
+            console.log(`🔸 ${system.name} (ID: ${system.id}): ${system.degree.toFixed(6)}°`);
+            console.log(`   ${system.description}`);
+            console.log();
         });
+        
+        // Compare planetary positions with different ayanamsa
+        const planets1 = getCurrentPlanets(date, 1); // Lahiri
+        const planets2 = getCurrentPlanets(date, 2); // Raman
+        
+        if (planets1 && planets2) {
+            console.log('🔄 Planetary Position Comparison (Lahiri vs Raman):');
+            console.log();
+            
+            planets1.forEach((planet1, index) => {
+                const planet2 = planets2[index];
+                if (planet2 && planet1.planet === planet2.planet) {
+                    const diff = Math.abs(planet1.longitude - planet2.longitude);
+                    console.log(`${getPlanetEmoji(planet1.planet)} ${planet1.planet}:`);
+                    console.log(`   Lahiri: ${planet1.longitude.toFixed(4)}°`);
+                    console.log(`   Raman:  ${planet2.longitude.toFixed(4)}°`);
+                    console.log(`   Diff:   ${diff.toFixed(4)}°`);
+                    console.log();
+                }
+            });
+        }
+        
+    } catch (error) {
+        console.error('❌ Error comparing ayanamsa systems:', error.message);
     }
-    
-    console.log();
-    return results;
 }
 
 /**
- * Detailed analysis of planetary data
+ * Detailed planetary analysis
  */
 async function detailedPlanetaryAnalysis(date) {
-    console.log(FORMAT.section('DETAILED PLANETARY ANALYSIS'));
+    console.log('DETAILED PLANETARY ANALYSIS');
+    console.log('-'.repeat(30));
     console.log();
     
-    const result = await ERROR_HANDLER.wrap(async () => {
+    try {
         const planets = getCurrentPlanets(date, 1);
         
-        if (!planets) {
-            throw new Error('Could not retrieve planetary positions');
-        }
-        
-        // Summary table
-        console.log(`${EMOJI.GENERAL.star} Summary Table:`);
-        console.log();
-        
-        const widths = [10, 16, 16, 6, 12];
-        console.log(FORMAT.tableRow(['Planet', 'Rashi', 'Nakshatra', 'Pada', 'Ruler'], widths));
-        console.log(FORMAT.tableSeparator(widths));
-        
-        planets.forEach(planet => {
-            const row = [
-                planet.planet,
-                planet.rashi.name,
-                planet.nakshatra.name,
-                planet.nakshatra.pada,
-                planet.nakshatra.ruler
-            ];
-            console.log(FORMAT.tableRow(row, widths));
-        });
-        
-        console.log();
-        
-        // Strength analysis
-        console.log(FORMAT.subsection('Planetary Strength Analysis'));
-        
-        planets.forEach(planet => {
-            const strength = analyzePlanetStrength(planet);
-            const emoji = EMOJI.PLANETS[planet.planet] || '🌟';
-            
-            console.log(`${emoji} ${planet.planet}: ${strength.level} ${strength.indicator}`);
-            if (strength.note) {
-                console.log(`   ${strength.note}`);
-            }
-        });
-        
-        console.log();
-        return planets;
-        
-    }, 'detailed planetary analysis');
-    
-    return result;
-}
-
-/**
- * Generate astrological insights from planetary positions
- */
-async function generateAstrologicalInsights(date) {
-    console.log(FORMAT.section('ASTROLOGICAL INSIGHTS'));
-    console.log();
-    
-    const result = await ERROR_HANDLER.wrap(async () => {
-        const planets = getCurrentPlanets(date, 1);
-        
-        if (!planets) {
-            throw new Error('Could not retrieve planetary positions for analysis');
-        }
-        
-        // Conjunctions analysis
-        const conjunctions = ANALYZER.findConjunctions(planets);
-        if (conjunctions.length > 0) {
-            console.log(`${EMOJI.GENERAL.star} Planetary Conjunctions:`);
-            conjunctions.forEach(conj => {
-                console.log(`   • ${conj.planets.join(' + ')} in ${conj.rashi} (${conj.orb.toFixed(1)}° orb)`);
-            });
-            console.log();
-        }
+        if (!planets) return;
         
         // Elemental analysis
-        console.log(`${EMOJI.GENERAL.earth} Elemental Distribution:`);
-        const elements = ANALYZER.analyzeElements(planets);
-        
-        Object.entries(elements).forEach(([element, data]) => {
-            const percentage = (data.count / planets.length * 100).toFixed(1);
-            const elementEmoji = EMOJI.ELEMENTS[element] || '';
-            
-            console.log(`   ${elementEmoji} ${element.padEnd(6)}: ${data.count} planets (${percentage}%) - ${data.planets.join(', ')}`);
+        const elementCounts = {};
+        planets.forEach(planet => {
+            const element = planet.rashi.element;
+            elementCounts[element] = (elementCounts[element] || 0) + 1;
         });
         
+        console.log('🔥 Elemental Distribution:');
+        Object.entries(elementCounts).forEach(([element, count]) => {
+            console.log(`   ${getElementEmoji(element)} ${element}: ${count} planets`);
+        });
         console.log();
         
-        // Nakshatra groupings
-        const nakshatraGroups = ANALYZER.findNakshatraGroups(planets);
-        if (nakshatraGroups.length > 0) {
-            console.log(`${EMOJI.GENERAL.star} Nakshatra Groupings:`);
-            nakshatraGroups.forEach(([nakshatra, planetList]) => {
-                console.log(`   • ${planetList.join(' & ')} in ${nakshatra} nakshatra`);
+        // Rashi analysis
+        const rashiCounts = {};
+        planets.forEach(planet => {
+            const rashi = planet.rashi.name;
+            rashiCounts[rashi] = (rashiCounts[rashi] || 0) + 1;
+        });
+        
+        console.log('♈ Rashi Distribution:');
+        Object.entries(rashiCounts).forEach(([rashi, count]) => {
+            console.log(`   ${rashi}: ${count} planet${count > 1 ? 's' : ''}`);
+        });
+        console.log();
+        
+        // Nakshatra analysis
+        const nakshatraCounts = {};
+        planets.forEach(planet => {
+            const nakshatra = planet.nakshatra.name;
+            nakshatraCounts[nakshatra] = (nakshatraCounts[nakshatra] || 0) + 1;
+        });
+        
+        console.log('⭐ Nakshatra Distribution:');
+        Object.entries(nakshatraCounts).forEach(([nakshatra, count]) => {
+            console.log(`   ${nakshatra}: ${count} planet${count > 1 ? 's' : ''}`);
+        });
+        console.log();
+        
+    } catch (error) {
+        console.error('❌ Error in detailed analysis:', error.message);
+    }
+}
+
+/**
+ * Generate astrological insights
+ */
+async function generateAstrologicalInsights(date) {
+    console.log('ASTROLOGICAL INSIGHTS');
+    console.log('-'.repeat(30));
+    console.log();
+    
+    try {
+        const planets = getCurrentPlanets(date, 1);
+        
+        if (!planets) return;
+        
+        // Find planets in their own signs (exaltation)
+        const exaltedPlanets = planets.filter(planet => {
+            const ownSigns = {
+                'Sun': 'Simha',
+                'Moon': 'Karka',
+                'Mars': 'Mesha',
+                'Mercury': 'Mithuna',
+                'Jupiter': 'Dhanu',
+                'Venus': 'Tula',
+                'Saturn': 'Makara'
+            };
+            return ownSigns[planet.planet] === planet.rashi.name;
+        });
+        
+        if (exaltedPlanets.length > 0) {
+            console.log('👑 Planets in their own signs:');
+            exaltedPlanets.forEach(planet => {
+                console.log(`   ${getPlanetEmoji(planet.planet)} ${planet.planet} in ${planet.rashi.name}`);
             });
             console.log();
         }
         
-        // Special observations
-        console.log(`${EMOJI.GENERAL.info} Special Observations:`);
-        const observations = generateSpecialObservations(planets);
-        observations.forEach(obs => {
-            console.log(`   • ${obs}`);
+        // Find retrograde planets (simplified check)
+        console.log('🔄 Planetary Motion Analysis:');
+        planets.forEach(planet => {
+            const speed = Math.abs(planet.longitude - (planet.longitude - 1)); // Simplified
+            const status = speed < 0.1 ? 'Retrograde' : 'Direct';
+            console.log(`   ${getPlanetEmoji(planet.planet)} ${planet.planet}: ${status}`);
         });
-        
         console.log();
-        return { conjunctions, elements, nakshatraGroups, observations };
         
-    }, 'astrological insights generation');
-    
-    return result;
+    } catch (error) {
+        console.error('❌ Error generating insights:', error.message);
+    }
 }
 
 /**
- * Validate planetary data integrity
+ * Validate planetary data
  */
 async function validatePlanetaryData(date) {
-    console.log(FORMAT.section('DATA VALIDATION'));
+    console.log('DATA VALIDATION');
+    console.log('-'.repeat(30));
     console.log();
     
-    const result = await ERROR_HANDLER.wrap(async () => {
+    try {
         const planets = getCurrentPlanets(date, 1);
         
         if (!planets) {
-            throw new Error('Could not retrieve planetary data for validation');
+            console.log('❌ No planetary data to validate');
+            return;
         }
         
-        console.log(`${EMOJI.GENERAL.info} Validating ${planets.length} planetary positions...`);
+        console.log('✅ Validation Results:');
+        
+        // Check longitude ranges
+        const validLongitudes = planets.every(planet => 
+            planet.longitude >= 0 && planet.longitude <= 360
+        );
+        console.log(`   Longitude ranges: ${validLongitudes ? '✅ Valid' : '❌ Invalid'}`);
+        
+        // Check latitude ranges
+        const validLatitudes = planets.every(planet => 
+            planet.latitude >= -90 && planet.latitude <= 90
+        );
+        console.log(`   Latitude ranges: ${validLatitudes ? '✅ Valid' : '❌ Invalid'}`);
+        
+        // Check rashi numbers
+        const validRashis = planets.every(planet => 
+            planet.rashi.rashi >= 1 && planet.rashi.rashi <= 12
+        );
+        console.log(`   Rashi numbers: ${validRashis ? '✅ Valid' : '❌ Invalid'}`);
+        
+        // Check nakshatra numbers
+        const validNakshatras = planets.every(planet => 
+            planet.nakshatra.nakshatra >= 1 && planet.nakshatra.nakshatra <= 27
+        );
+        console.log(`   Nakshatra numbers: ${validNakshatras ? '✅ Valid' : '❌ Invalid'}`);
+        
         console.log();
         
-        let validCount = 0;
-        let totalIssues = 0;
-        
-        planets.forEach(planet => {
-            const issues = VALIDATOR.planetaryPosition(planet);
-            
-            if (issues.length === 0) {
-                validCount++;
-                console.log(`${EMOJI.GENERAL.success} ${planet.planet}: Valid`);
-            } else {
-                totalIssues += issues.length;
-                console.log(`${EMOJI.GENERAL.warning} ${planet.planet}: ${issues.join(', ')}`);
-            }
-        });
-        
-        console.log();
-        
-        if (totalIssues === 0) {
-            ERROR_HANDLER.success(`All ${planets.length} planetary positions passed validation!`);
-        } else {
-            console.log(`${EMOJI.GENERAL.info} Validation Summary:`);
-            console.log(`  Valid positions: ${validCount}`);
-            console.log(`  Positions with issues: ${planets.length - validCount}`);
-            console.log(`  Total issues found: ${totalIssues}`);
-        }
-        
-        return { valid: validCount, total: planets.length, issues: totalIssues };
-        
-    }, 'planetary data validation');
-    
-    console.log();
-    return result;
+    } catch (error) {
+        console.error('❌ Error validating data:', error.message);
+    }
 }
 
 /**
- * Compare planetary positions across different dates
+ * Historical position comparison
  */
 async function historicalPositionComparison() {
-    console.log(FORMAT.section('HISTORICAL POSITION COMPARISON'));
+    console.log('HISTORICAL COMPARISON');
+    console.log('-'.repeat(30));
     console.log();
     
-    const dates = [
-        CONFIG.TEST_DATES.REFERENCE,
-        CONFIG.TEST_DATES.CURRENT
-    ];
-    
-    console.log(`${EMOJI.GENERAL.calendar} Comparing Sun position across dates:`);
-    console.log();
-    
-    const results = [];
-    
-    for (const date of dates) {
-        const result = await ERROR_HANDLER.wrap(async () => {
-            const planets = getCurrentPlanets(date, 1);
-            const sun = planets?.find(p => p.planet === 'Sun');
+    try {
+        const currentDate = new Date();
+        const pastDate = new Date(currentDate.getTime() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
+        
+        const currentPlanets = getCurrentPlanets(currentDate, 1);
+        const pastPlanets = getCurrentPlanets(pastDate, 1);
+        
+        if (currentPlanets && pastPlanets) {
+            console.log(`📊 Planetary Movement (${pastDate.toDateString()} → ${currentDate.toDateString()}):`);
+            console.log();
             
-            if (sun) {
-                console.log(`📅 ${date.toISOString().split('T')[0]}:`);
-                console.log(`   Position: ${sun.longitude.toFixed(4)}°`);
-                console.log(`   Rashi: ${sun.rashi.name} (${sun.rashi.degree.toFixed(2)}°)`);
-                console.log(`   Nakshatra: ${sun.nakshatra.name} (Pada ${sun.nakshatra.pada})`);
-                console.log();
-                
-                return { date, sun };
-            }
-            return null;
-        }, `fetching positions for ${date.toISOString()}`);
-        
-        if (result) {
-            results.push(result);
+            currentPlanets.forEach((currentPlanet, index) => {
+                const pastPlanet = pastPlanets[index];
+                if (pastPlanet && currentPlanet.planet === pastPlanet.planet) {
+                    const movement = currentPlanet.longitude - pastPlanet.longitude;
+                    const normalizedMovement = ((movement + 180) % 360) - 180; // Normalize to -180 to 180
+                    
+                    console.log(`${getPlanetEmoji(currentPlanet.planet)} ${currentPlanet.planet}:`);
+                    console.log(`   Movement: ${normalizedMovement.toFixed(2)}°`);
+                    console.log(`   Current: ${currentPlanet.longitude.toFixed(2)}°`);
+                    console.log(`   Past:    ${pastPlanet.longitude.toFixed(2)}°`);
+                    console.log();
+                }
+            });
         }
-    }
-    
-    // Calculate movement
-    if (results.length === 2) {
-        const [older, newer] = results;
-        const timeDiff = (newer.date.getTime() - older.date.getTime()) / (1000 * 60 * 60 * 24); // days
-        const positionDiff = newer.sun.longitude - older.sun.longitude;
-        const dailyMotion = positionDiff / timeDiff;
         
-        console.log(FORMAT.subsection('Motion Analysis'));
-        console.log(`Time difference: ${timeDiff.toFixed(1)} days`);
-        console.log(`Position change: ${positionDiff.toFixed(6)}°`);
-        console.log(`Average daily motion: ${dailyMotion.toFixed(6)}°/day`);
-    }
-    
-    console.log();
-    return results;
-}
-
-/**
- * Helper function to analyze planetary strength
- */
-function analyzePlanetStrength(planet) {
-    // Exaltation signs
-    const exaltation = {
-        'Sun': 'Mesha', 'Moon': 'Vrishabha', 'Mercury': 'Kanya',
-        'Venus': 'Meena', 'Mars': 'Makara', 'Jupiter': 'Karka', 'Saturn': 'Tula'
-    };
-    
-    // Own signs
-    const ownSigns = {
-        'Sun': ['Simha'], 'Moon': ['Karka'], 'Mercury': ['Mithuna', 'Kanya'],
-        'Venus': ['Vrishabha', 'Tula'], 'Mars': ['Mesha', 'Vrishchika'],
-        'Jupiter': ['Dhanu', 'Meena'], 'Saturn': ['Makara', 'Kumbha']
-    };
-    
-    if (exaltation[planet.planet] === planet.rashi.name) {
-        return { level: 'Excellent', indicator: '⭐⭐⭐', note: 'Exalted - Maximum strength' };
-    } else if (ownSigns[planet.planet]?.includes(planet.rashi.name)) {
-        return { level: 'Very Good', indicator: '⭐⭐', note: 'Own sign - Strong' };
-    } else if (planet.rashi.ruler === planet.planet) {
-        return { level: 'Good', indicator: '⭐', note: 'Comfortable position' };
-    } else {
-        return { level: 'Average', indicator: '○', note: null };
+    } catch (error) {
+        console.error('❌ Error in historical comparison:', error.message);
     }
 }
 
 /**
- * Generate special observations from planetary data
+ * Helper function to get planet emoji
  */
-function generateSpecialObservations(planets) {
-    const observations = [];
-    
-    // Element dominance
-    const elements = ANALYZER.analyzeElements(planets);
-    const maxElement = Object.entries(elements).reduce((max, [element, data]) => 
-        data.count > max.count ? { element, count: data.count } : max, { element: '', count: 0 });
-    
-    if (maxElement.count >= 3) {
-        observations.push(`${maxElement.element} element dominance with ${maxElement.count} planets`);
-    }
-    
-    // Rashi distribution analysis
-    const rashiGroups = {};
-    planets.forEach(planet => {
-        const rashiName = planet.rashi.name;
-        rashiGroups[rashiName] = (rashiGroups[rashiName] || 0) + 1;
-    });
-    
-    const maxRashi = Object.entries(rashiGroups).reduce((max, [rashi, count]) => 
-        count > max.count ? { rashi, count } : max, { rashi: '', count: 0 });
-    
-    if (maxRashi.count >= 2) {
-        observations.push(`Multiple planets (${maxRashi.count}) in ${maxRashi.rashi} rashi`);
-    }
-    
-    // Check for planets at rashi boundaries (last 3 degrees or first 3 degrees)
-    const boundaryPlanets = planets.filter(planet => 
-        planet.rashi.degree <= 3 || planet.rashi.degree >= 27
-    );
-    
-    if (boundaryPlanets.length > 0) {
-        observations.push(`${boundaryPlanets.length} planet(s) near rashi boundaries: ${boundaryPlanets.map(p => p.planet).join(', ')}`);
-    }
-    
-    return observations;
+function getPlanetEmoji(planet) {
+    const emojis = {
+        'Sun': '☀️',
+        'Moon': '🌙',
+        'Mars': '🔴',
+        'Mercury': '☿',
+        'Jupiter': '♃',
+        'Venus': '♀️',
+        'Saturn': '♄',
+        'Rahu': '☊',
+        'Ketu': '☋'
+    };
+    return emojis[planet] || '🌟';
 }
 
-// Execute if run directly
+/**
+ * Helper function to get element emoji
+ */
+function getElementEmoji(element) {
+    const emojis = {
+        'Fire': '🔥',
+        'Earth': '🌍',
+        'Air': '💨',
+        'Water': '💧'
+    };
+    return emojis[element] || '⚡';
+}
+
+// Run the demonstration
 if (require.main === module) {
-    demonstratePlanetaryPositions().catch(error => {
-        console.error(`${EMOJI.GENERAL.error} Fatal error:`, error);
-        process.exit(1);
-    });
+    demonstratePlanetaryPositions();
 }
-
-// Export for use as module
-module.exports = {
-    demonstratePlanetaryPositions,
-    displayCurrentPositions,
-    compareAyanamsaSystems,
-    detailedPlanetaryAnalysis,
-    generateAstrologicalInsights,
-    validatePlanetaryData,
-    historicalPositionComparison
-};

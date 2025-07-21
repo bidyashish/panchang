@@ -11,10 +11,10 @@ import { normalizeAngle, formatDate } from '../utils/index';
 export interface PanchangaData {
     date: Date;
     location?: { latitude: number; longitude: number; timezone: string; name?: string };
-    tithi: TithiInfo;
-    nakshatra: { nakshatra: number; pada: number; name: string };
-    yoga: { yoga: number; name: string };
-    karana: { karana: number; name: string };
+    tithi: TithiInfo & { endTime?: Date | null };
+    nakshatra: { nakshatra: number; pada: number; name: string; endTime?: Date | null };
+    yoga: { yoga: number; name: string; endTime?: Date | null };
+    karana: { karana: number; name: string; endTime?: Date | null };
     vara: { vara: number; name: string };
     sunrise: Date | null;
     sunset: Date | null;
@@ -36,21 +36,36 @@ export class Panchanga {
     }
 
     calculatePanchanga(date: Date, location: Location, useSidereal: boolean = true): PanchangaData {
-        // Traditional Panchanga calculations should be done at sunrise
-        // This follows the correct Vedic astronomical principles
-        const sunrise = this.ephemeris.calculateSunrise(date, location);
-        const calculationTime = sunrise || date; // Use sunrise if available, otherwise input date
+        // CRITICAL: Preserve the exact input date without any modifications
+        // The input date represents the precise moment for Panchanga calculation
+        const inputDate = date;
+        
+        // For more accurate Panchanga calculation, we might want to use sunrise time
+        // as the reference point, since traditional Panchanga is calculated from sunrise
+        let calculationMoment = inputDate;
+        
+        try {
+            // Try to get sunrise for more accurate calculation
+            const sunriseTime = this.ephemeris.calculateSunrise(inputDate, location);
+            if (sunriseTime && Math.abs(sunriseTime.getTime() - inputDate.getTime()) < 24 * 60 * 60 * 1000) {
+                // Use sunrise if it's within the same day and available
+                calculationMoment = sunriseTime;
+            }
+        } catch (error) {
+            // If sunrise calculation fails, use input date
+            calculationMoment = inputDate;
+        }
         
         let sunPosition: any;
         let moonPosition: any;
         
         if (useSidereal) {
-            // Calculate sidereal positions using Lahiri ayanamsa
-            const ayanamsa = this.ephemeris.calculateLahiriAyanamsa(calculationTime);
+            // Calculate sidereal positions using Lahiri ayanamsa at the calculation moment
+            const ayanamsa = this.ephemeris.calculateLahiriAyanamsa(calculationMoment);
             
             // Get tropical positions first
-            const sunTropical = this.ephemeris.calculatePosition(calculationTime, 'Sun');
-            const moonTropical = this.ephemeris.calculatePosition(calculationTime, 'Moon');
+            const sunTropical = this.ephemeris.calculatePosition(calculationMoment, 'Sun');
+            const moonTropical = this.ephemeris.calculatePosition(calculationMoment, 'Moon');
             
             // Convert to sidereal by subtracting ayanamsa
             sunPosition = {
@@ -64,36 +79,42 @@ export class Panchanga {
             };
         } else {
             // Use tropical positions
-            sunPosition = this.ephemeris.calculatePosition(calculationTime, 'Sun');
-            moonPosition = this.ephemeris.calculatePosition(calculationTime, 'Moon');
+            sunPosition = this.ephemeris.calculatePosition(calculationMoment, 'Sun');
+            moonPosition = this.ephemeris.calculatePosition(calculationMoment, 'Moon');
         }
 
-        // Calculate Panchanga elements using corrected formulas
+        // Calculate Panchanga elements using precise positions
         const tithi = this.planetary.calculateTithi(sunPosition.longitude, moonPosition.longitude);
         const nakshatra = this.ephemeris.calculateNakshatra(moonPosition.longitude);
         const yoga = this.planetary.calculateYoga(sunPosition.longitude, moonPosition.longitude);
         const karana = this.planetary.calculateKarana(sunPosition.longitude, moonPosition.longitude);
-        const vara = this.getVara(date); // Vara is based on the civil calendar date
+        const vara = this.getVara(inputDate); // Use exact input date for vara calculation
 
-        // Calculate sunrise and sunset for the day
-        const sunriseTime = this.ephemeris.calculateSunrise(date, location);
-        const sunsetTime = this.ephemeris.calculateSunset(date, location);
+        // Calculate transition times for each element
+        const tithiEndTime = this.calculateTithiEndTime(inputDate, location);
+        const nakshatraEndTime = this.calculateNakshatraEndTime(inputDate, location);
+        const yogaEndTime = this.calculateYogaEndTime(inputDate, location);
+        const karanaEndTime = this.calculateKaranaEndTime(inputDate, location);
 
-        // Determine moon phase based on positions
+        // Calculate sunrise and sunset for the date (preserve timezone context)
+        const sunriseTime = this.ephemeris.calculateSunrise(inputDate, location);
+        const sunsetTime = this.ephemeris.calculateSunset(inputDate, location);
+
+        // Determine moon phase based on precise longitude difference
         const moonPhase = this.getMoonPhase(sunPosition.longitude, moonPosition.longitude);
 
         return {
-            date,
+            date: inputDate, // Return the EXACT input date - no conversions or modifications
             location: { 
                 latitude: location.latitude, 
                 longitude: location.longitude, 
                 timezone: location.timezone || 'UTC',
                 name: location.name
             },
-            tithi,
-            nakshatra,
-            yoga,
-            karana,
+            tithi: { ...tithi, endTime: tithiEndTime },
+            nakshatra: { ...nakshatra, endTime: nakshatraEndTime },
+            yoga: { ...yoga, endTime: yogaEndTime },
+            karana: { ...karana, endTime: karanaEndTime },
             vara,
             sunrise: sunriseTime,
             sunset: sunsetTime,
@@ -110,47 +131,14 @@ export class Panchanga {
     }
 
     private getVara(date: Date): { vara: number; name: string } {
-        // Correct Vara (weekday) calculation based on Julian Day Number
-        // The astronomical day starts at noon, but for calendar purposes
-        // we use the civil day starting at midnight
-        const jd = this.dateToJulian(date);
-        
-        // Standard formula: vara = (JD + 1.5) mod 7
-        // JD 0 corresponds to Monday, so we adjust accordingly
-        const varaNumber = Math.floor((jd + 1.5) % 7);
+        // CRITICAL: Calculate Vara (weekday) from the exact input date
+        // This should preserve the intended calendar date regardless of timezone
+        const varaNumber = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
         
         return {
             vara: varaNumber,
             name: this.varaNames[varaNumber]
         };
-    }
-
-    /**
-     * Convert Date to Julian Day Number using accurate algorithm
-     */
-    private dateToJulian(date: Date): number {
-        const year = date.getUTCFullYear();
-        const month = date.getUTCMonth() + 1;
-        const day = date.getUTCDate();
-        const hour = date.getUTCHours();
-        const minute = date.getUTCMinutes();
-        const second = date.getUTCSeconds();
-        const millisecond = date.getUTCMilliseconds();
-
-        // Convert time to decimal hours
-        const decimalHour = hour + minute / 60.0 + second / 3600.0 + millisecond / 3600000.0;
-
-        // Standard Julian Day calculation algorithm
-        let a = Math.floor((14 - month) / 12);
-        let y = year + 4800 - a;
-        let m = month + 12 * a - 3;
-        
-        let jd = day + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
-        
-        // Add the time component
-        jd += (decimalHour - 12.0) / 24.0;
-        
-        return jd;
     }
 
     private getMoonPhase(sunLongitude: number, moonLongitude: number): string {
@@ -179,8 +167,8 @@ export class Panchanga {
         const dayLength = sunset.getTime() - sunrise.getTime();
         const oneEighth = dayLength / 8; // Divide day into 8 equal parts
         
-        // Get the day of week (0 = Sunday)
-        const dayOfWeek = date.getDay();
+        // CRITICAL: Use the exact input date for day calculation
+        const dayOfWeek = date.getDay(); // 0 = Sunday
         let rahuKaalPeriod: number;
 
         // Correct Rahu Kaal timing based on weekday
@@ -200,6 +188,141 @@ export class Panchanga {
         const endTime = new Date(startTime.getTime() + oneEighth);
 
         return { start: startTime, end: endTime };
+    }
+
+    /**
+     * Calculate when current Tithi ends
+     */
+    private calculateTithiEndTime(date: Date, location: Location): Date | null {
+        try {
+            // Calculate the Moon-Sun longitude difference needed for next tithi
+            const currentSunPos = this.ephemeris.calculatePosition(date, 'Sun');
+            const currentMoonPos = this.ephemeris.calculatePosition(date, 'Moon');
+            const ayanamsa = this.ephemeris.calculateLahiriAyanamsa(date);
+            
+            const sunLon = this.normalizeAngle(currentSunPos.longitude - ayanamsa);
+            const moonLon = this.normalizeAngle(currentMoonPos.longitude - ayanamsa);
+            
+            const currentElongation = this.normalizeAngle(moonLon - sunLon);
+            const currentTithiNum = Math.floor(currentElongation / 12) + 1; // Each tithi = 12 degrees
+            
+            // Find when Moon reaches the longitude for next tithi
+            const nextTithiElongation = currentTithiNum * 12; // Next tithi starts at this elongation
+            const targetMoonLon = this.normalizeAngle(sunLon + nextTithiElongation);
+            
+            // Estimate time using Moon's daily motion (approximately 13.2 degrees per day)
+            const moonDailyMotion = 13.2; // degrees per day
+            const longitudeDiff = this.normalizeAngle(targetMoonLon - moonLon);
+            const daysToTarget = longitudeDiff / moonDailyMotion;
+            
+            const endTime = new Date(date.getTime() + daysToTarget * 24 * 60 * 60 * 1000);
+            return endTime;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    /**
+     * Calculate when current Nakshatra ends
+     */
+    private calculateNakshatraEndTime(date: Date, location: Location): Date | null {
+        try {
+            // For more accurate timing, calculate multiple points around the date
+            const baseDate = new Date(date);
+            baseDate.setHours(0, 0, 0, 0); // Start of day
+            
+            let bestEndTime: Date | null = null;
+            
+            // Check every hour of the day to find nakshatra transitions
+            for (let hour = 0; hour < 48; hour++) { // Check 48 hours (today + tomorrow)
+                const testTime = new Date(baseDate.getTime() + hour * 60 * 60 * 1000);
+                
+                const moonPos = this.ephemeris.calculatePosition(testTime, 'Moon');
+                const ayanamsa = this.ephemeris.calculateLahiriAyanamsa(testTime);
+                const moonLon = this.normalizeAngle(moonPos.longitude - ayanamsa);
+                
+                const nakshatraArc = 360 / 27; // 13.333... degrees per nakshatra
+                const nakshatraNum = Math.floor(moonLon / nakshatraArc) + 1;
+                
+                // Get current nakshatra at the input date
+                const currentMoonPos = this.ephemeris.calculatePosition(date, 'Moon');
+                const currentAyanamsa = this.ephemeris.calculateLahiriAyanamsa(date);
+                const currentMoonLon = this.normalizeAngle(currentMoonPos.longitude - currentAyanamsa);
+                const currentNakshatraNum = Math.floor(currentMoonLon / nakshatraArc) + 1;
+                
+                // If nakshatra changed, this is the transition time
+                if (nakshatraNum !== currentNakshatraNum && testTime > date) {
+                    bestEndTime = testTime;
+                    break;
+                }
+            }
+            
+            return bestEndTime;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    /**
+     * Calculate when current Yoga ends
+     */
+    private calculateYogaEndTime(date: Date, location: Location): Date | null {
+        try {
+            const currentSunPos = this.ephemeris.calculatePosition(date, 'Sun');
+            const currentMoonPos = this.ephemeris.calculatePosition(date, 'Moon');
+            const ayanamsa = this.ephemeris.calculateLahiriAyanamsa(date);
+            
+            const sunLon = this.normalizeAngle(currentSunPos.longitude - ayanamsa);
+            const moonLon = this.normalizeAngle(currentMoonPos.longitude - ayanamsa);
+            
+            const currentSum = this.normalizeAngle(sunLon + moonLon);
+            const yogaArc = 360 / 27; // 13.333... degrees per yoga
+            const currentYogaNum = Math.floor(currentSum / yogaArc);
+            
+            // Find when sum reaches next yoga
+            const nextYogaStart = (currentYogaNum + 1) * yogaArc;
+            const longitudeDiff = this.normalizeAngle(nextYogaStart - currentSum);
+            
+            // Yoga changes based on combined motion of Sun and Moon
+            const combinedDailyMotion = 13.2 + 0.985; // Moon + Sun daily motion
+            const daysToTarget = longitudeDiff / combinedDailyMotion;
+            
+            const endTime = new Date(date.getTime() + daysToTarget * 24 * 60 * 60 * 1000);
+            return endTime;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    /**
+     * Calculate when current Karana ends
+     */
+    private calculateKaranaEndTime(date: Date, location: Location): Date | null {
+        try {
+            const currentSunPos = this.ephemeris.calculatePosition(date, 'Sun');
+            const currentMoonPos = this.ephemeris.calculatePosition(date, 'Moon');
+            const ayanamsa = this.ephemeris.calculateLahiriAyanamsa(date);
+            
+            const sunLon = this.normalizeAngle(currentSunPos.longitude - ayanamsa);
+            const moonLon = this.normalizeAngle(currentMoonPos.longitude - ayanamsa);
+            
+            const currentElongation = this.normalizeAngle(moonLon - sunLon);
+            const karanaArc = 6; // Each karana = 6 degrees (half tithi)
+            const currentKaranaInCycle = Math.floor(currentElongation / karanaArc);
+            
+            // Find when Moon reaches next karana
+            const nextKaranaStart = (currentKaranaInCycle + 1) * karanaArc;
+            const longitudeDiff = this.normalizeAngle(nextKaranaStart - currentElongation);
+            
+            // Estimate time using Moon's daily motion relative to Sun
+            const relativeDailyMotion = 13.2 - 0.985; // Moon - Sun daily motion
+            const daysToTarget = longitudeDiff / relativeDailyMotion;
+            
+            const endTime = new Date(date.getTime() + daysToTarget * 24 * 60 * 60 * 1000);
+            return endTime;
+        } catch (error) {
+            return null;
+        }
     }
 
     /**

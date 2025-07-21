@@ -1,80 +1,59 @@
-#!/usr/bin/env node
+const { Ephemeris } = require('./dist/calculations/ephemeris');
+const { Planetary } = require('./dist/calculations/planetary');
+const { Panchanga } = require('./dist/panchanga/index');
 
-/**
- * Quick validation of the new getCurrentPlanets function
- */
+console.log('=== Panchanga Validation Test ===\n');
 
-const { getCurrentPlanets } = require('../dist/index.js');
+// Test date from Python reference: 2013-01-18
+const testDate = new Date('2013-01-18T12:00:00Z');
+console.log(`Test date: ${testDate.toISOString()}`);
 
-console.log('🔍 Quick Validation of getCurrentPlanets');
-console.log('=' .repeat(45));
-
-// Test with a known date
-const testDate = new Date('2024-06-21T12:00:00Z'); // Summer solstice
-console.log(`Test Date: ${testDate.toISOString()}`);
+// Bangalore location from Python reference
+const bangalore = { latitude: 12.972, longitude: 77.594, timezone: 'Asia/Kolkata' };
 
 try {
-    const planets = getCurrentPlanets(testDate);
+    const ephemeris = new Ephemeris();
+    const planetary = new Planetary();
+    const panchanga = new Panchanga();
+
+    // Test at sunrise time as per Python reference
+    const sunrise = ephemeris.calculateSunrise(testDate, bangalore);
+    console.log(`Calculated sunrise: ${sunrise?.toISOString()}`);
     
-    console.log(`\n✅ Successfully retrieved ${planets.length} planetary positions\n`);
-    
-    // Quick validation
-    let allValid = true;
-    
-    planets.forEach((planet, index) => {
-        const issues = [];
+    // Test both at noon and sunrise
+    const testTimes = [
+        { time: testDate, label: 'Noon UTC' },
+        { time: sunrise || testDate, label: 'Sunrise' },
+        { time: new Date('2013-01-18T06:00:00Z'), label: 'Sunrise approx' }
+    ];
+
+    testTimes.forEach(({ time, label }) => {
+        console.log(`\n=== Testing at ${label} (${time.toISOString()}) ===`);
         
-        // Validate longitude
-        if (planet.longitude < 0 || planet.longitude >= 360) {
-            issues.push(`longitude ${planet.longitude} out of range`);
-        }
-        
-        // Validate rashi
-        if (planet.rashi.rashi < 1 || planet.rashi.rashi > 12) {
-            issues.push(`rashi ${planet.rashi.rashi} out of range`);
-        }
-        if (planet.rashi.degree < 0 || planet.rashi.degree >= 30) {
-            issues.push(`rashi degree ${planet.rashi.degree} out of range`);
-        }
-        
-        // Validate nakshatra
-        if (planet.nakshatra.nakshatra < 1 || planet.nakshatra.nakshatra > 27) {
-            issues.push(`nakshatra ${planet.nakshatra.nakshatra} out of range`);
-        }
-        if (planet.nakshatra.pada < 1 || planet.nakshatra.pada > 4) {
-            issues.push(`pada ${planet.nakshatra.pada} out of range`);
-        }
-        
-        // Validate consistency: longitude should match rashi calculation
-        const expectedLongitude = (planet.rashi.rashi - 1) * 30 + planet.rashi.degree;
-        if (Math.abs(expectedLongitude - planet.longitude) > 0.01) {
-            issues.push(`longitude/rashi mismatch: expected ${expectedLongitude.toFixed(4)}, got ${planet.longitude.toFixed(4)}`);
-        }
-        
-        if (issues.length > 0) {
-            console.log(`❌ ${planet.planet}: ${issues.join(', ')}`);
-            allValid = false;
-        } else {
-            console.log(`✅ ${planet.planet}: ${planet.rashi.name} ${planet.rashi.degree.toFixed(1)}°, ${planet.nakshatra.name} (${planet.nakshatra.pada})`);
-        }
+        const sunPos = ephemeris.calculateSiderealPosition(time, 'Sun');
+        const moonPos = ephemeris.calculateSiderealPosition(time, 'Moon');
+
+        console.log(`Sun sidereal longitude: ${sunPos.longitude.toFixed(6)}°`);
+        console.log(`Moon sidereal longitude: ${moonPos.longitude.toFixed(6)}°`);
+
+        const tithi = planetary.calculateTithi(sunPos.longitude, moonPos.longitude);
+        const nakshatra = ephemeris.calculateNakshatra(moonPos.longitude);
+        const yoga = planetary.calculateYoga(sunPos.longitude, moonPos.longitude);
+        const karana = planetary.calculateKarana(sunPos.longitude, moonPos.longitude);
+
+        console.log(`Tithi: ${tithi.name} (${tithi.tithi}) - Expected: Saptami (7)`);
+        console.log(`Nakshatra: ${nakshatra.name} (${nakshatra.nakshatra}) - Expected: Revati (27)`);
+        console.log(`Yoga: ${yoga.name} (${yoga.yoga}) - Expected: Siddha (21)`);
+        console.log(`Karana: ${karana.name} (${karana.karana}) - Expected: Vanija (14)`);
+
+        const moonPhase = (moonPos.longitude - sunPos.longitude + 360) % 360;
+        console.log(`Moon phase: ${moonPhase.toFixed(6)}°, Tithi calc: ${Math.ceil(moonPhase / 12)}`);
     });
-    
-    if (allValid) {
-        console.log('\n🎉 All validations passed! Function is working correctly.');
-    } else {
-        console.log('\n⚠️ Some validation issues found.');
-    }
-    
-    // Test with current date
-    console.log('\n--- Testing with current date ---');
-    const currentPlanets = getCurrentPlanets();
-    console.log(`Current date results: ${currentPlanets.length} planets`);
-    
-    const sun = currentPlanets.find(p => p.planet === 'Sun');
-    if (sun) {
-        console.log(`Current Sun position: ${sun.rashi.name} ${sun.rashi.degree.toFixed(2)}°`);
-    }
-    
+
+    // Test Vara (day-independent)
+    const panchangaData = panchanga.calculatePanchanga(testDate, bangalore);
+    console.log(`\nVara: ${panchangaData.vara.name} (${panchangaData.vara.vara}) - Expected: Friday (5)`);
+
 } catch (error) {
-    console.error('❌ Error:', error.message);
+    console.error('Error:', error);
 }

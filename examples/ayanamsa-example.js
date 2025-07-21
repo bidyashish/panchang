@@ -1,339 +1,320 @@
 #!/usr/bin/env node
 
 /**
- * Comprehensive Ayanamsa Systems Example
+ * Ayanamsa Example - Demonstrates different ayanamsa systems
  * 
- * Demonstrates all available ayanamsa systems and their usage:
- * - Display all 40+ ayanamsa systems
- * - Compare popular systems
- * - Historical value analysis
- * - Practical usage examples
+ * This example shows how to:
+ * - Get all available ayanamsa systems
+ * - Get specific ayanamsa values
+ * - Compare different ayanamsa systems
+ * - Calculate planetary positions with different ayanamsa
  * 
  * @author Astronomical Calculator Team
  * @version 2.0.0
  */
 
-const { getAyanamsa, getSpecificAyanamsa, AstronomicalCalculator } = require('../dist/index.js');
-const { CONFIG, FORMAT, EMOJI, ERROR_HANDLER, VALIDATOR } = require('./common-utils.js');
+const { getAyanamsa, getSpecificAyanamsa, getCurrentPlanets } = require('../dist/index.js');
 
 /**
  * Main execution function
  */
 async function demonstrateAyanamsa() {
-    console.log(FORMAT.section('🌟 AYANAMSA SYSTEMS DEMONSTRATION', 70));
+    console.log('🌟 AYANAMSA SYSTEMS DEMONSTRATION');
+    console.log('='.repeat(60));
     console.log();
     
     const currentDate = new Date();
-    console.log(`${EMOJI.GENERAL.calendar} Date: ${FORMAT.date(currentDate)}`);
-    console.log(`${EMOJI.GENERAL.info} Timestamp: ${currentDate.toISOString()}`);
+    console.log(`📅 Date: ${currentDate.toDateString()}`);
+    console.log(`⏰ Timestamp: ${currentDate.toISOString()}`);
     console.log();
     
     try {
-        // Section 1: Display all ayanamsa systems
-        await displayAllAyanamsaSystems(currentDate);
+        // Section 1: List all available ayanamsa systems
+        await listAllAyanamsaSystems(currentDate);
         
-        // Section 2: Popular systems comparison
-        await comparePopularSystems(currentDate);
+        // Section 2: Get specific ayanamsa values
+        await getSpecificAyanamsaValues(currentDate);
         
-        // Section 3: Historical analysis
-        await historicalAnalysis();
+        // Section 3: Compare ayanamsa systems
+        await compareAyanamsaSystems(currentDate);
         
-        // Section 4: Practical usage with AstronomicalCalculator
-        await demonstrateCalculatorUsage();
+        // Section 4: Planetary positions with different ayanamsa
+        await planetaryPositionsWithAyanamsa(currentDate);
         
-        // Section 5: Validation and accuracy testing
-        await validateAyanamsaData(currentDate);
+        // Section 5: Historical ayanamsa comparison
+        await historicalAyanamsaComparison();
         
-        ERROR_HANDLER.success('Ayanamsa demonstration completed successfully!');
+        console.log('✅ Ayanamsa demonstration completed successfully!');
         
     } catch (error) {
-        console.error(`${EMOJI.GENERAL.error} Demonstration failed:`, error.message);
+        console.error('❌ Demonstration failed:', error.message);
         process.exit(1);
     }
 }
 
 /**
- * Display all available ayanamsa systems in a formatted table
+ * List all available ayanamsa systems
  */
-async function displayAllAyanamsaSystems(date) {
-    console.log(FORMAT.section('ALL AYANAMSA SYSTEMS'));
+async function listAllAyanamsaSystems(date) {
+    console.log('ALL AVAILABLE AYANAMSA SYSTEMS');
+    console.log('-'.repeat(35));
     console.log();
-    
-    const result = await ERROR_HANDLER.wrap(async () => {
-        const allAyanamsas = getAyanamsa(date);
-        
-        if (!allAyanamsas || allAyanamsas.length === 0) {
-            throw new Error('No ayanamsa systems found');
-        }
-        
-        console.log(`${EMOJI.GENERAL.star} Found ${allAyanamsas.length} ayanamsa systems:`);
-        console.log();
-        
-        // Table header
-        const widths = [4, 28, 12, 40];
-        console.log(FORMAT.tableRow(['ID', 'Name', 'Degree', 'Description'], widths));
-        console.log(FORMAT.tableSeparator(widths));
-        
-        // Table rows
-        allAyanamsas.forEach(ayanamsa => {
-            const row = [
-                ayanamsa.id,
-                ayanamsa.name,
-                `${ayanamsa.degree.toFixed(6)}°`,
-                ayanamsa.description
-            ];
-            console.log(FORMAT.tableRow(row, widths));
-        });
-        
-        return allAyanamsas;
-    }, 'fetching all ayanamsa systems');
-    
-    console.log();
-    return result;
-}
-
-/**
- * Compare popular ayanamsa systems
- */
-async function comparePopularSystems(date) {
-    console.log(FORMAT.section('POPULAR SYSTEMS COMPARISON'));
-    console.log();
-    
-    const popularSystems = CONFIG.POPULAR_AYANAMSAS;
-    
-    console.log(`${EMOJI.GENERAL.telescope} Comparing ${popularSystems.length} popular systems:`);
-    console.log();
-    
-    const results = [];
-    
-    for (const systemName of popularSystems) {
-        const result = await ERROR_HANDLER.wrap(async () => {
-            const ayanamsa = getSpecificAyanamsa(systemName, date);
-            if (ayanamsa) {
-                console.log(`${EMOJI.GENERAL.star} ${ayanamsa.name}:`);
-                console.log(`   Degree: ${ayanamsa.degree.toFixed(6)}°`);
-                console.log(`   ID: ${ayanamsa.id}`);
-                console.log(`   Description: ${ayanamsa.description}`);
-                console.log();
-                
-                // Validate the data
-                const issues = VALIDATOR.ayanamsa(ayanamsa);
-                if (issues.length > 0) {
-                    ERROR_HANDLER.warn(`Validation issues: ${issues.join(', ')}`, ayanamsa.name);
-                }
-                
-                return ayanamsa;
-            } else {
-                ERROR_HANDLER.warn(`System '${systemName}' not found`);
-                return null;
-            }
-        }, `fetching ${systemName} ayanamsa`);
-        
-        if (result) {
-            results.push(result);
-        }
-    }
-    
-    // Show differences
-    if (results.length > 1) {
-        console.log(FORMAT.subsection('Degree Differences'));
-        const baseSystem = results[0];
-        results.slice(1).forEach(system => {
-            const diff = system.degree - baseSystem.degree;
-            console.log(`${system.name} vs ${baseSystem.name}: ${diff.toFixed(6)}°`);
-        });
-        console.log();
-    }
-    
-    return results;
-}
-
-/**
- * Analyze historical values of Lahiri ayanamsa
- */
-async function historicalAnalysis() {
-    console.log(FORMAT.section('HISTORICAL ANALYSIS'));
-    console.log();
-    
-    const historicalDates = CONFIG.TEST_DATES.HISTORICAL;
-    
-    console.log(`${EMOJI.GENERAL.calendar} Lahiri Ayanamsa Historical Values:`);
-    console.log();
-    
-    const widths = [6, 15, 12];
-    console.log(FORMAT.tableRow(['Year', 'Date', 'Degree'], widths));
-    console.log(FORMAT.tableSeparator(widths));
-    
-    const historicalValues = [];
-    
-    for (const date of historicalDates) {
-        const result = await ERROR_HANDLER.wrap(async () => {
-            const lahiri = getSpecificAyanamsa('Lahiri', date);
-            if (lahiri) {
-                const row = [
-                    date.getFullYear(),
-                    date.toISOString().split('T')[0],
-                    `${lahiri.degree.toFixed(6)}°`
-                ];
-                console.log(FORMAT.tableRow(row, widths));
-                
-                return { date: date, degree: lahiri.degree };
-            }
-            return null;
-        }, `fetching Lahiri for ${date.getFullYear()}`);
-        
-        if (result) {
-            historicalValues.push(result);
-        }
-    }
-    
-    // Calculate average annual change
-    if (historicalValues.length > 1) {
-        console.log();
-        console.log(FORMAT.subsection('Analysis'));
-        
-        for (let i = 1; i < historicalValues.length; i++) {
-            const prev = historicalValues[i - 1];
-            const curr = historicalValues[i];
-            const yearsDiff = curr.date.getFullYear() - prev.date.getFullYear();
-            const degreeDiff = curr.degree - prev.degree;
-            const annualChange = degreeDiff / yearsDiff;
-            
-            console.log(`${prev.date.getFullYear()}-${curr.date.getFullYear()}: ${annualChange.toFixed(8)}°/year change`);
-        }
-    }
-    
-    console.log();
-}
-
-/**
- * Demonstrate usage through AstronomicalCalculator class
- */
-async function demonstrateCalculatorUsage() {
-    console.log(FORMAT.section('ASTRONOMICAL CALCULATOR USAGE'));
-    console.log();
-    
-    const calculator = new AstronomicalCalculator();
     
     try {
-        const testDate = CONFIG.TEST_DATES.REFERENCE;
-        console.log(`${EMOJI.GENERAL.calendar} Test Date: ${testDate.toISOString()}`);
+        const ayanamsaSystems = getAyanamsa(date);
+        
+        console.log(`📊 Found ${ayanamsaSystems.length} ayanamsa systems:`);
         console.log();
         
-        // Get all systems through calculator
-        const allSystems = await ERROR_HANDLER.wrap(async () => {
-            return calculator.getAyanamsa(testDate);
-        }, 'calculator.getAyanamsa()');
-        
-        if (allSystems) {
-            console.log(`${EMOJI.GENERAL.success} Retrieved ${allSystems.length} systems via calculator`);
-            
-            // Show top 5 by degree value
+        ayanamsaSystems.forEach((system, index) => {
+            console.log(`${index + 1}. ${system.name} (ID: ${system.id})`);
+            console.log(`   Degree: ${system.degree.toFixed(6)}°`);
+            console.log(`   Description: ${system.description}`);
             console.log();
-            console.log(FORMAT.subsection('Top 5 Systems (by degree value)'));
-            
-            const sorted = allSystems
-                .filter(a => a && typeof a.degree === 'number')
-                .sort((a, b) => b.degree - a.degree)
-                .slice(0, 5);
-            
-            sorted.forEach((ayanamsa, index) => {
-                console.log(`${index + 1}. ${ayanamsa.name}: ${ayanamsa.degree.toFixed(6)}°`);
-            });
-        }
+        });
         
+        // Summary table
+        console.log('📋 Summary Table:');
+        console.log('ID  | Name                    | Degree (°)');
+        console.log('----|-------------------------|-----------');
+        ayanamsaSystems.forEach(system => {
+            console.log(`${system.id.toString().padStart(2)}  | ${system.name.padEnd(23)} | ${system.degree.toFixed(6)}`);
+        });
         console.log();
         
-        // Demonstrate lookup by name and ID
-        console.log(FORMAT.subsection('Lookup Examples'));
-        
-        const byName = await ERROR_HANDLER.wrap(async () => {
-            return calculator.getSpecificAyanamsa('Krishnamurti', testDate);
-        }, 'lookup by name');
-        
-        if (byName) {
-            console.log(`By name 'Krishnamurti': ${byName.degree.toFixed(6)}° (ID: ${byName.id})`);
-        }
-        
-        const byId = await ERROR_HANDLER.wrap(async () => {
-            return calculator.getSpecificAyanamsa(5, testDate);
-        }, 'lookup by ID');
-        
-        if (byId) {
-            console.log(`By ID 5: ${byId.name} = ${byId.degree.toFixed(6)}°`);
-        }
-        
-        // Verify they match
-        if (byName && byId && byName.id === byId.id) {
-            ERROR_HANDLER.success('Name and ID lookups match correctly!');
-        }
-        
-    } finally {
-        calculator.cleanup();
+    } catch (error) {
+        console.error('❌ Error listing ayanamsa systems:', error.message);
     }
-    
-    console.log();
 }
 
 /**
- * Validate ayanamsa data integrity
+ * Get specific ayanamsa values by ID and name
  */
-async function validateAyanamsaData(date) {
-    console.log(FORMAT.section('DATA VALIDATION'));
+async function getSpecificAyanamsaValues(date) {
+    console.log('SPECIFIC AYANAMSA VALUES');
+    console.log('-'.repeat(30));
     console.log();
     
-    const result = await ERROR_HANDLER.wrap(async () => {
-        const allSystems = getAyanamsa(date);
-        let validCount = 0;
-        let totalIssues = 0;
+    try {
+        // Get by ID
+        const lahiriById = getSpecificAyanamsa(1, date);
+        const ramanById = getSpecificAyanamsa(2, date);
+        const kpById = getSpecificAyanamsa(5, date);
         
-        console.log(`${EMOJI.GENERAL.info} Validating ${allSystems.length} systems...`);
+        console.log('🔍 Ayanamsa by ID:');
+        if (lahiriById) {
+            console.log(`   ID 1: ${lahiriById.name} = ${lahiriById.degree.toFixed(6)}°`);
+        }
+        if (ramanById) {
+            console.log(`   ID 2: ${ramanById.name} = ${ramanById.degree.toFixed(6)}°`);
+        }
+        if (kpById) {
+            console.log(`   ID 5: ${kpById.name} = ${kpById.degree.toFixed(6)}°`);
+        }
         console.log();
         
-        allSystems.forEach((ayanamsa, index) => {
-            const issues = VALIDATOR.ayanamsa(ayanamsa);
+        // Get by name
+        const lahiriByName = getSpecificAyanamsa('Lahiri', date);
+        const ramanByName = getSpecificAyanamsa('Raman', date);
+        
+        console.log('🔍 Ayanamsa by name:');
+        if (lahiriByName) {
+            console.log(`   Lahiri: ${lahiriByName.degree.toFixed(6)}°`);
+        }
+        if (ramanByName) {
+            console.log(`   Raman: ${ramanByName.degree.toFixed(6)}°`);
+        }
+        console.log();
+        
+        // Verify consistency
+        if (lahiriById && lahiriByName) {
+            const diff = Math.abs(lahiriById.degree - lahiriByName.degree);
+            console.log(`✅ Lahiri consistency check: ${diff < 0.000001 ? 'PASSED' : 'FAILED'} (diff: ${diff.toFixed(8)}°)`);
+        }
+        console.log();
+        
+    } catch (error) {
+        console.error('❌ Error getting specific ayanamsa values:', error.message);
+    }
+}
+
+/**
+ * Compare different ayanamsa systems
+ */
+async function compareAyanamsaSystems(date) {
+    console.log('AYANAMSA SYSTEM COMPARISON');
+    console.log('-'.repeat(30));
+    console.log();
+    
+    try {
+        const ayanamsaIds = [1, 2, 5]; // Lahiri, Raman, KP
+        const systems = [];
+        
+        console.log('🔄 Comparing ayanamsa systems:');
+        console.log();
+        
+        for (const id of ayanamsaIds) {
+            const system = getSpecificAyanamsa(id, date);
+            if (system) {
+                systems.push(system);
+                console.log(`🔸 ${system.name}: ${system.degree.toFixed(6)}°`);
+            }
+        }
+        
+        if (systems.length > 1) {
+            console.log();
+            console.log('📊 Differences from Lahiri:');
             
-            if (issues.length === 0) {
-                validCount++;
-            } else {
-                totalIssues += issues.length;
-                console.log(`${EMOJI.GENERAL.warning} System ${index + 1} (${ayanamsa.name || 'Unknown'}): ${issues.join(', ')}`);
+            const lahiri = systems.find(s => s.id === 1);
+            if (lahiri) {
+                systems.forEach(system => {
+                    if (system.id !== 1) {
+                        const diff = system.degree - lahiri.degree;
+                        console.log(`   ${system.name} - Lahiri: ${diff.toFixed(6)}°`);
+                    }
+                });
+            }
+            
+            console.log();
+            console.log('📈 Range Analysis:');
+            const degrees = systems.map(s => s.degree);
+            const min = Math.min(...degrees);
+            const max = Math.max(...degrees);
+            const range = max - min;
+            console.log(`   Minimum: ${min.toFixed(6)}°`);
+            console.log(`   Maximum: ${max.toFixed(6)}°`);
+            console.log(`   Range: ${range.toFixed(6)}°`);
+        }
+        console.log();
+        
+    } catch (error) {
+        console.error('❌ Error comparing ayanamsa systems:', error.message);
+    }
+}
+
+/**
+ * Calculate planetary positions with different ayanamsa
+ */
+async function planetaryPositionsWithAyanamsa(date) {
+    console.log('PLANETARY POSITIONS WITH DIFFERENT AYANAMSA');
+    console.log('-'.repeat(45));
+    console.log();
+    
+    try {
+        const ayanamsaIds = [1, 2]; // Lahiri and Raman
+        const planets = ['Sun', 'Moon', 'Mars'];
+        
+        console.log(`🌍 Calculating positions for: ${planets.join(', ')}`);
+        console.log();
+        
+        for (const ayanamsaId of ayanamsaIds) {
+            const ayanamsa = getSpecificAyanamsa(ayanamsaId, date);
+            if (!ayanamsa) continue;
+            
+            console.log(`🔭 Using ${ayanamsa.name} Ayanamsa (${ayanamsa.degree.toFixed(6)}°):`);
+            
+            const planetaryPositions = getCurrentPlanets(date, ayanamsaId);
+            if (planetaryPositions) {
+                planets.forEach(planetName => {
+                    const planet = planetaryPositions.find(p => p.planet === planetName);
+                    if (planet) {
+                        console.log(`   ${getPlanetEmoji(planetName)} ${planetName}: ${planet.longitude.toFixed(4)}°`);
+                    }
+                });
+            }
+            console.log();
+        }
+        
+        // Show differences
+        console.log('📊 Position Differences (Raman - Lahiri):');
+        const lahiriPlanets = getCurrentPlanets(date, 1);
+        const ramanPlanets = getCurrentPlanets(date, 2);
+        
+        if (lahiriPlanets && ramanPlanets) {
+            planets.forEach(planetName => {
+                const lahiriPlanet = lahiriPlanets.find(p => p.planet === planetName);
+                const ramanPlanet = ramanPlanets.find(p => p.planet === planetName);
+                
+                if (lahiriPlanet && ramanPlanet) {
+                    const diff = ramanPlanet.longitude - lahiriPlanet.longitude;
+                    console.log(`   ${getPlanetEmoji(planetName)} ${planetName}: ${diff.toFixed(4)}°`);
+                }
+            });
+        }
+        console.log();
+        
+    } catch (error) {
+        console.error('❌ Error calculating planetary positions:', error.message);
+    }
+}
+
+/**
+ * Historical ayanamsa comparison
+ */
+async function historicalAyanamsaComparison() {
+    console.log('HISTORICAL AYANAMSA COMPARISON');
+    console.log('-'.repeat(35));
+    console.log();
+    
+    try {
+        const dates = [
+            new Date('1900-01-01'),
+            new Date('1950-01-01'),
+            new Date('2000-01-01'),
+            new Date('2025-01-01')
+        ];
+        
+        console.log('📅 Ayanamsa values over time (Lahiri):');
+        console.log();
+        
+        dates.forEach(date => {
+            const ayanamsa = getSpecificAyanamsa(1, date);
+            if (ayanamsa) {
+                console.log(`   ${date.getFullYear()}: ${ayanamsa.degree.toFixed(6)}°`);
             }
         });
         
         console.log();
+        console.log('📈 Ayanamsa progression:');
         
-        if (totalIssues === 0) {
-            ERROR_HANDLER.success(`All ${allSystems.length} systems passed validation!`);
-        } else {
-            console.log(`${EMOJI.GENERAL.info} Validation Summary:`);
-            console.log(`  Valid systems: ${validCount}`);
-            console.log(`  Systems with issues: ${allSystems.length - validCount}`);
-            console.log(`  Total issues found: ${totalIssues}`);
+        for (let i = 1; i < dates.length; i++) {
+            const prevAyanamsa = getSpecificAyanamsa(1, dates[i - 1]);
+            const currAyanamsa = getSpecificAyanamsa(1, dates[i]);
+            
+            if (prevAyanamsa && currAyanamsa) {
+                const yearsDiff = dates[i].getFullYear() - dates[i - 1].getFullYear();
+                const ayanamsaDiff = currAyanamsa.degree - prevAyanamsa.degree;
+                const annualRate = ayanamsaDiff / yearsDiff;
+                
+                console.log(`   ${dates[i - 1].getFullYear()}-${dates[i].getFullYear()}: ${ayanamsaDiff.toFixed(6)}° (${annualRate.toFixed(6)}°/year)`);
+            }
         }
+        console.log();
         
-        return { valid: validCount, total: allSystems.length, issues: totalIssues };
-        
-    }, 'data validation');
-    
-    console.log();
-    return result;
+    } catch (error) {
+        console.error('❌ Error in historical comparison:', error.message);
+    }
 }
 
-// Execute if run directly
+/**
+ * Helper function to get planet emoji
+ */
+function getPlanetEmoji(planet) {
+    const emojis = {
+        'Sun': '☀️',
+        'Moon': '🌙',
+        'Mars': '🔴',
+        'Mercury': '☿',
+        'Jupiter': '♃',
+        'Venus': '♀️',
+        'Saturn': '♄',
+        'Rahu': '☊',
+        'Ketu': '☋'
+    };
+    return emojis[planet] || '🌟';
+}
+
+// Run the demonstration
 if (require.main === module) {
-    demonstrateAyanamsa().catch(error => {
-        console.error(`${EMOJI.GENERAL.error} Fatal error:`, error);
-        process.exit(1);
-    });
+    demonstrateAyanamsa();
 }
-
-// Export for use as module
-module.exports = {
-    demonstrateAyanamsa,
-    displayAllAyanamsaSystems,
-    comparePopularSystems,
-    historicalAnalysis,
-    demonstrateCalculatorUsage,
-    validateAyanamsaData
-};

@@ -100,6 +100,24 @@ export * from './calculations/planetary';
 
     fs.writeFileSync('dist/index.d.ts', declarationContent.trim());
 
+    // Copy ephemeris data files
+    console.log('📂 Copying ephemeris data files...');
+    const epheSourceDir = 'ephe';
+    const epheDestDir = 'dist/ephe';
+    
+    if (fs.existsSync(epheSourceDir)) {
+        fs.mkdirSync(epheDestDir, { recursive: true });
+        const epheFiles = fs.readdirSync(epheSourceDir);
+        epheFiles.forEach(file => {
+            if (file.endsWith('.se1')) {
+                fs.copyFileSync(`${epheSourceDir}/${file}`, `${epheDestDir}/${file}`);
+                console.log(`  📄 Copied ${file}`);
+            }
+        });
+    } else {
+        console.warn('⚠️  Ephemeris data directory not found, Swiss Ephemeris will use built-in data');
+    }
+
     // Create CLI script
     console.log('🔧 Creating CLI script...');
     const cliContent = `#!/usr/bin/env node

@@ -1,21 +1,25 @@
 /**
  * Usage examples for the Panchang package
  * 
- * This file demonstrates how to use the package in other projects
+ * This file demonstrates how to use the NPM package
  */
 
-// If using in another project, you would import like this:
-// const { getPanchanga, getPanchangaReport, AstronomicalCalculator } = require('@bidyashish/panchang');
+// Import from the built NPM library
+const { 
+    getPanchanga, 
+    getPanchangaReport, 
+    getCurrentPlanets,
+    getAyanamsa,
+    getSpecificAyanamsa,
+    AstronomicalCalculator 
+} = require('../dist/index.js');
 
-// For this example, we'll use the local build
-const { getPanchanga, getPanchangaReport, AstronomicalCalculator } = require('../dist/index');
-
-console.log('🌟 Astronomical Calculator - Usage Examples\n');
+console.log('🌟 Astronomical Calculator - NPM Library Usage Examples\n');
 
 // Example 1: Quick Panchanga calculation using convenience function
 console.log('=== Example 1: Quick Panchanga Calculation ===');
 
-const date = new Date('2013-01-18T12:00:00Z');
+const date = new Date('2025-01-18T12:00:00Z');
 const latitude = 12.972; // Bangalore, India
 const longitude = 77.594;
 const timezone = 'Asia/Kolkata';

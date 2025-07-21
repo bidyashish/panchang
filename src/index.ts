@@ -52,22 +52,26 @@ export interface PanchangaOutput {
         number: number;
         percentage: number;
         paksha: 'Shukla' | 'Krishna'; // Waxing or Waning
+        endTime?: Date | null; // When this tithi ends
     };
     /** Lunar mansion */
     nakshatra: {
         name: string;
         number: number;
         pada: number;
+        endTime?: Date | null; // When this nakshatra ends
     };
     /** Astronomical combination of Sun and Moon */
     yoga: {
         name: string;
         number: number;
+        endTime?: Date | null; // When this yoga ends
     };
     /** Half of a tithi */
     karana: {
         name: string;
         number: number;
+        endTime?: Date | null; // When this karana ends
     };
     /** Moon phase description */
     moonPhase: string;
@@ -109,15 +113,16 @@ export class AstronomicalCalculator {
             altitude: input.location.altitude || 0
         };
 
-        // Calculate Panchanga data
+        // CRITICAL: Pass the exact input date without any modifications
+        // This ensures the date represents the precise moment for calculation
         const panchangaData = this.panchanga.calculatePanchanga(input.date, location, true);
         
-        // Calculate Rahu Kaal
+        // Calculate Rahu Kaal using the exact same date
         const rahuKaal = this.panchanga.calculateRahuKaal(input.date, location);
 
         // Transform to simplified output format
         return {
-            date: panchangaData.date,
+            date: input.date, // Preserve the EXACT input date
             vara: {
                 name: panchangaData.vara.name,
                 number: panchangaData.vara.vara
@@ -126,29 +131,31 @@ export class AstronomicalCalculator {
                 name: panchangaData.tithi.name,
                 number: panchangaData.tithi.tithi,
                 percentage: panchangaData.tithi.percentage,
-                paksha: panchangaData.tithi.isWaxing ? 'Shukla' : 'Krishna'
+                paksha: panchangaData.tithi.isWaxing ? 'Shukla' : 'Krishna',
+                endTime: panchangaData.tithi.endTime
             },
             nakshatra: {
                 name: panchangaData.nakshatra.name,
                 number: panchangaData.nakshatra.nakshatra,
-                pada: panchangaData.nakshatra.pada
+                pada: panchangaData.nakshatra.pada,
+                endTime: panchangaData.nakshatra.endTime
             },
             yoga: {
                 name: panchangaData.yoga.name,
-                number: panchangaData.yoga.yoga
+                number: panchangaData.yoga.yoga,
+                endTime: panchangaData.yoga.endTime
             },
             karana: {
                 name: panchangaData.karana.name,
-                number: panchangaData.karana.karana
+                number: panchangaData.karana.karana,
+                endTime: panchangaData.karana.endTime
             },
             moonPhase: panchangaData.moonPhase,
             sunrise: panchangaData.sunrise,
             sunset: panchangaData.sunset,
             rahuKaal: rahuKaal
         };
-    }
-
-    /**
+    }    /**
      * Calculate planetary positions for a given date
      * @param date Date for calculation
      * @param bodies Array of celestial body names (e.g., ['Sun', 'Moon', 'Mars'])
@@ -249,7 +256,7 @@ export class AstronomicalCalculator {
 // Convenience functions for quick use
 /**
  * Quick function to calculate Panchanga
- * @param date Date for calculation
+ * @param date Date for calculation - must be the EXACT date/time for calculation
  * @param latitude Latitude in degrees
  * @param longitude Longitude in degrees  
  * @param timezone Timezone identifier
@@ -259,8 +266,9 @@ export function getPanchanga(date: Date, latitude: number, longitude: number, ti
     const calculator = new AstronomicalCalculator();
     
     try {
+        // CRITICAL: Pass the exact date without any modifications
         return calculator.calculatePanchanga({
-            date,
+            date: date, // Use the exact input date
             location: { latitude, longitude, timezone }
         });
     } finally {
@@ -270,7 +278,7 @@ export function getPanchanga(date: Date, latitude: number, longitude: number, ti
 
 /**
  * Quick function to get a formatted Panchanga report
- * @param date Date for calculation
+ * @param date Date for calculation - must be the EXACT date/time for calculation
  * @param latitude Latitude in degrees
  * @param longitude Longitude in degrees
  * @param timezone Timezone identifier
@@ -281,8 +289,9 @@ export function getPanchangaReport(date: Date, latitude: number, longitude: numb
     const calculator = new AstronomicalCalculator();
     
     try {
+        // CRITICAL: Pass the exact date without any modifications
         return calculator.generatePanchangaReport({
-            date,
+            date: date, // Use the exact input date
             location: { latitude, longitude, timezone, name: locationName }
         });
     } finally {
