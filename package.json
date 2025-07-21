@@ -25,12 +25,8 @@
     "test:run": "vitest --run",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm run build && npm run test:run",
-    "example": "node examples/usage-example.js",
-    "examples": "node examples/run-all-tests.js",
-    "test:today": "ts-node examples/today-test.ts",
-    "test:quick": "node examples/quick-test.js",
-    "verify:drik": "node examples/verify-drikpanchang.js",
-    "test:kelowna": "node examples/kelowna-precise-test.js"
+    "example": "node examples/library-verification.js",
+    "verify": "node examples/simple-verify.js"
   },
   "dependencies": {
     "swisseph": "^0.5.17"
