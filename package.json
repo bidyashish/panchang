@@ -17,13 +17,11 @@
   },
   "scripts": {
     "build": "node build.js",
-    "build:old": "tsc",
     "start": "node dist/app.js",
     "dev": "ts-node src/app.ts",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:run": "vitest --run",
-    "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm run build && npm run test:run",
     "example": "node examples/library-verification.js",
     "verify": "node examples/simple-verify.js"
