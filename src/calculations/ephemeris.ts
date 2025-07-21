@@ -3,7 +3,6 @@ import { Position, EclipticCoordinates, Location } from '../types/astronomical';
 import { normalizeAngle } from '../utils/index';
 import { PlanetaryPosition, Planetary } from './planetary';
 import * as path from 'path';
-import * as fs from 'fs';
 
 export interface AyanamsaInfo {
     name: string;
@@ -38,48 +37,14 @@ export class Ephemeris {
     private ephemerisPath: string = '';
 
     constructor(ephemerisPath?: string) {
-        // Try to find ephe directory relative to the project root
+        // Use hardcoded path to node_modules ephemeris files
         if (!ephemerisPath) {
-            // First try: relative to the source file
-            const sourceDir = __dirname;
-            const projectRoot = path.resolve(sourceDir, '../../');
-            const projectEphe = path.join(projectRoot, 'ephe');
-            
-            // Second try: relative to current working directory
-            const cwdEphe = path.join(process.cwd(), 'ephe');
-            
-            // Third try: check if it's in the dist folder structure
-            const distEphe = path.join(path.dirname(require.main?.filename || ''), 'ephe');
-            
-            // Check which path exists and has files
-            if (this.pathHasEphemerisFiles(projectEphe)) {
-                ephemerisPath = projectEphe;
-            } else if (this.pathHasEphemerisFiles(cwdEphe)) {
-                ephemerisPath = cwdEphe;
-            } else if (this.pathHasEphemerisFiles(distEphe)) {
-                ephemerisPath = distEphe;
-            } else {
-                // Fallback to the original system path
-                ephemerisPath = '/usr/share/libswe/ephe';
-            }
+            this.ephemerisPath = path.join(__dirname, '../../node_modules/swisseph/ephe');
+        } else {
+            this.ephemerisPath = ephemerisPath;
         }
-        
-        this.ephemerisPath = ephemerisPath;
-        this.initializeSwissEph();
-    }
 
-    private pathHasEphemerisFiles(ephePath: string): boolean {
-        try {
-            if (!fs.existsSync(ephePath)) {
-                return false;
-            }
-            
-            // Check if the directory contains Swiss Ephemeris files (*.se1)
-            const files = fs.readdirSync(ephePath);
-            return files.some((file: string) => file.endsWith('.se1'));
-        } catch (error) {
-            return false;
-        }
+        this.initializeSwissEph();
     }
 
     private initializeSwissEph(): void {
@@ -100,20 +65,27 @@ export class Ephemeris {
             
             if (body === 'Ketu') {
                 // Ketu is 180° opposite to Rahu
-                result = swisseph.swe_calc_ut(jd, 11, 0); // Calculate Rahu first
-                const ketuLongitude = normalizeAngle((result.longitude || result[0] || 0) + 180);
-                return {
-                    longitude: ketuLongitude,
-                    latitude: -(result.latitude || result[1] || 0) // Opposite latitude
-                };
+                result = swisseph.swe_calc_ut(jd, swisseph.SE_MEAN_NODE, swisseph.SEFLG_SWIEPH);
+                if (result && 'longitude' in result) {
+                    const ketuLongitude = normalizeAngle(result.longitude + 180);
+                    return {
+                        longitude: ketuLongitude,
+                        latitude: -result.latitude // Opposite latitude
+                    };
+                }
             } else {
-                result = swisseph.swe_calc_ut(jd, planetId, 0);
+                result = swisseph.swe_calc_ut(jd, planetId, swisseph.SEFLG_SWIEPH);
             }
             
-            return {
-                longitude: normalizeAngle(result.longitude || result[0] || 0),
-                latitude: result.latitude || result[1] || 0
-            };
+            if (result && 'longitude' in result) {
+                return {
+                    longitude: normalizeAngle(result.longitude),
+                    latitude: result.latitude
+                };
+            }
+            
+            // Fallback if Swiss Ephemeris fails
+            return this.getFallbackPosition(body, date);
         } catch (error) {
             console.warn(`Swiss Ephemeris calculation failed for ${body}, using fallback`);
             return this.getFallbackPosition(body, date);
@@ -134,7 +106,7 @@ export class Ephemeris {
         try {
             const jd = this.dateToJulian(date);
             // Set Lahiri ayanamsa (SE_SIDM_LAHIRI = 1)
-            swisseph.swe_set_sid_mode(1, 0, 0);
+            swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
             const ayanamsa = swisseph.swe_get_ayanamsa_ut(jd);
             return ayanamsa || this.getFallbackLahiriAyanamsa(date);
         } catch (error) {
@@ -143,29 +115,10 @@ export class Ephemeris {
     }
 
     private getFallbackLahiriAyanamsa(date: Date): number {
-        // Enhanced Lahiri ayanamsa calculation matching DrikPanchang precision
-        // Based on official Lahiri formula with corrections used by Indian Government
-        const year = date.getFullYear();
-        const month = date.getMonth() + 1;
-        const day = date.getDate();
-        const hour = date.getHours() + date.getMinutes()/60 + date.getSeconds()/3600;
-        
-        // Convert to precise decimal year including time of day
-        const decimalYear = year + (month - 1) / 12 + (day - 1 + hour/24) / 365.25;
-        
-        // High-precision Lahiri ayanamsa formula
-        // Reference: Lahiri Committee Report and modern astronomical corrections
-        const t = (decimalYear - 1900.0) / 100.0; // Centuries from 1900.0
-        
-        // Official Lahiri formula with higher precision coefficients
-        // These values are tuned to match DrikPanchang calculations
-        const ayanamsa = 22.46000 + 
-                        1.3915817 * t - 
-                        0.0130125 * t * t - 
-                        0.0000333 * t * t * t +
-                        0.0000014 * t * t * t * t;
-        
-        return ayanamsa;
+        // Simple Lahiri ayanamsa fallback
+        const year = date.getFullYear() + (date.getMonth() + 1) / 12 + date.getDate() / 365.25;
+        const t = (year - 1900.0) / 100.0;
+        return 22.46000 + 1.3915817 * t - 0.0130125 * t * t;
     }
 
     /**
@@ -305,130 +258,99 @@ export class Ephemeris {
 
     calculateSunrise(date: Date, location: Location): Date | null {
         try {
-            // CRITICAL: Preserve input date context while calculating sunrise for that specific day
-            return this.calculateSunriseAccurate(date, location);
+            const jd = this.dateToJulian(date);
+            
+            // Simplified approach: Find when Sun's altitude crosses sunrise horizon
+            // Using Swiss Ephemeris for accurate Sun position
+            for (let hour = 0; hour < 24; hour += 0.1) {
+                const testJd = jd - 0.5 + hour / 24; // Start from midnight
+                const sunPos = swisseph.swe_calc_ut(testJd, swisseph.SE_SUN, swisseph.SEFLG_SWIEPH);
+                
+                if (sunPos && 'longitude' in sunPos && sunPos.longitude !== undefined) {
+                    // Calculate Sun's altitude at this time
+                    const altitude = this.calculateSunAltitude(sunPos.longitude, sunPos.latitude, location, testJd);
+                    
+                    // Sunrise occurs when Sun's center crosses -50 arcminutes (with refraction)
+                    if (altitude > -0.8333 && hour > 3) { // Must be after 3 AM to avoid sunset
+                        return this.julianToDate(testJd);
+                    }
+                }
+            }
+            
+            return null;
         } catch (error) {
-            console.warn('Sunrise calculation failed, using fallback:', error);
-            return this.calculateSunriseSimple(date, location);
+            console.warn('Swiss Ephemeris sunrise calculation failed:', error);
+            // Simple fallback calculation - approximate sunrise at 6 AM local time
+            const sunrise = new Date(date);
+            sunrise.setHours(6, 0, 0, 0);
+            return sunrise;
         }
-    }
-    
-    private calculateSunriseAccurate(date: Date, location: Location): Date {
-        // CRITICAL: Calculate sunrise for the exact date specified, preserving timezone context
-        const jd = this.dateToJulian(date);
-        const lat = location.latitude * Math.PI / 180;
-        const lng = location.longitude * Math.PI / 180;
-        
-        // High-precision solar position calculation
-        const n = jd - 2451545.0; // Days from J2000.0
-        const L = (280.460 + 0.9856474 * n) * Math.PI / 180; // Mean longitude of Sun
-        const g = (357.528 + 0.9856003 * n) * Math.PI / 180; // Mean anomaly
-        const lambda = L + (1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * Math.PI / 180; // True longitude
-        
-        // Solar coordinates
-        const alpha = Math.atan2(Math.cos(23.439 * Math.PI / 180) * Math.sin(lambda), Math.cos(lambda)); // Right ascension
-        const delta = Math.asin(Math.sin(23.439 * Math.PI / 180) * Math.sin(lambda)); // Declination
-        
-        // Atmospheric refraction correction (standard value: -50 arcminutes)
-        const h0 = -0.8333 * Math.PI / 180; // -50' in radians
-        
-        const cosH = (Math.sin(h0) - Math.sin(lat) * Math.sin(delta)) / (Math.cos(lat) * Math.cos(delta));
-        
-        // Check for polar day/night
-        if (cosH > 1) {
-            // Polar night - Sun never rises
-            throw new Error('Polar night: Sun does not rise on this date at this location');
-        }
-        
-        if (cosH < -1) {
-            // Polar day - Sun never sets
-            throw new Error('Polar day: Sun does not set on this date at this location');
-        }
-        
-        const H = Math.acos(cosH); // Hour angle
-        const t = (alpha - lng - H) / (2 * Math.PI); // Time as fraction of day
-        
-        // Convert to actual time, preserving the date context
-        const utcTime = (jd + t - Math.floor(jd + t)) * 24;
-        
-        // Create sunrise time for the same calendar day as input
-        const sunrise = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-        const hours = Math.floor(utcTime);
-        const minutes = Math.floor((utcTime - hours) * 60);
-        const seconds = Math.floor(((utcTime - hours) * 60 - minutes) * 60);
-        
-        sunrise.setUTCHours(hours, minutes, seconds, 0);
-        return sunrise;
     }
 
-    private calculateSunriseSimple(date: Date, location: Location): Date {
-        // Simple fallback: assume 6 AM local time
-        const sunrise = new Date(date);
-        sunrise.setHours(6, 0, 0, 0);
-        return sunrise;
+    private calculateSunAltitude(sunLon: number, sunLat: number, location: Location, jd: number): number {
+        // Convert ecliptic coordinates to equatorial
+        const obliquity = 23.43929111; // Mean obliquity of ecliptic for J2000
+        const sunLonRad = sunLon * Math.PI / 180;
+        const sunLatRad = sunLat * Math.PI / 180;
+        const oblRad = obliquity * Math.PI / 180;
+        
+        // Calculate right ascension and declination
+        const ra = Math.atan2(
+            Math.sin(sunLonRad) * Math.cos(oblRad) - Math.tan(sunLatRad) * Math.sin(oblRad),
+            Math.cos(sunLonRad)
+        );
+        const dec = Math.asin(
+            Math.sin(sunLatRad) * Math.cos(oblRad) + Math.cos(sunLatRad) * Math.sin(oblRad) * Math.sin(sunLonRad)
+        );
+        
+        // Calculate Greenwich Mean Sidereal Time
+        const t = (jd - 2451545.0) / 36525;
+        const gmst0 = 100.46061837 + 36000.770053608 * t + 0.000387933 * t * t - t * t * t / 38710000;
+        const gmst = gmst0 + 15.04106864 * ((jd - Math.floor(jd)) * 24);
+        const lst = (gmst + location.longitude + 360) % 360;
+        
+        // Calculate hour angle
+        const ha = (lst - ra * 180 / Math.PI) * Math.PI / 180;
+        
+        // Calculate altitude
+        const latRad = location.latitude * Math.PI / 180;
+        const altitude = Math.asin(
+            Math.sin(latRad) * Math.sin(dec) + Math.cos(latRad) * Math.cos(dec) * Math.cos(ha)
+        );
+        
+        return altitude * 180 / Math.PI;
     }
+
 
     calculateSunset(date: Date, location: Location): Date | null {
         try {
-            // CRITICAL: Preserve input date context while calculating sunset for that specific day
-            return this.calculateSunsetAccurate(date, location);
+            const jd = this.dateToJulian(date);
+            
+            // Find when Sun's altitude crosses sunset horizon
+            // Using Swiss Ephemeris for accurate Sun position
+            for (let hour = 12; hour < 36; hour += 0.1) { // Start from noon, go to next day
+                const testJd = jd - 0.5 + hour / 24;
+                const sunPos = swisseph.swe_calc_ut(testJd, swisseph.SE_SUN, swisseph.SEFLG_SWIEPH);
+                
+                if (sunPos && 'longitude' in sunPos && sunPos.longitude !== undefined) {
+                    // Calculate Sun's altitude at this time
+                    const altitude = this.calculateSunAltitude(sunPos.longitude, sunPos.latitude, location, testJd);
+                    
+                    // Sunset occurs when Sun's center crosses -50 arcminutes (with refraction)
+                    if (altitude < -0.8333 && hour > 15) { // Must be after 3 PM to avoid sunrise
+                        return this.julianToDate(testJd);
+                    }
+                }
+            }
+            
+            return null;
         } catch (error) {
-            console.warn('Sunset calculation failed, using fallback:', error);
-            return this.calculateSunsetSimple(date, location);
-        }
-    }
-    
-    private calculateSunsetAccurate(date: Date, location: Location): Date {
-        const jd = this.dateToJulian(date);
-        const lat = location.latitude * Math.PI / 180;
-        const lng = location.longitude * Math.PI / 180;
-        
-        // More accurate solar position calculation
-        const n = jd - 2451545.0;
-        const L = (280.460 + 0.9856474 * n) * Math.PI / 180;
-        const g = (357.528 + 0.9856003 * n) * Math.PI / 180;
-        const lambda = L + (1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * Math.PI / 180;
-        
-        const alpha = Math.atan2(Math.cos(23.439 * Math.PI / 180) * Math.sin(lambda), Math.cos(lambda));
-        const delta = Math.asin(Math.sin(23.439 * Math.PI / 180) * Math.sin(lambda));
-        
-        // Atmospheric refraction correction (approximately -50 arcminutes)
-        const h0 = -0.8333 * Math.PI / 180;
-        
-        const cosH = (Math.sin(h0) - Math.sin(lat) * Math.sin(delta)) / (Math.cos(lat) * Math.cos(delta));
-        
-        if (cosH > 1) {
-            // No sunset (polar night)
+            console.warn('Swiss Ephemeris sunset calculation failed:', error);
+            // Simple fallback calculation - approximate sunset at 6 PM local time
             const sunset = new Date(date);
             sunset.setHours(18, 0, 0, 0);
             return sunset;
         }
-        
-        if (cosH < -1) {
-            // No sunset (midnight sun)
-            const sunset = new Date(date);
-            sunset.setHours(23, 59, 59, 999);
-            return sunset;
-        }
-        
-        const H = Math.acos(cosH);
-        const t = (alpha - lng + H) / (2 * Math.PI);
-        
-        // Convert to actual time
-        const utcTime = (jd + t - Math.floor(jd + t)) * 24;
-        const sunset = new Date(date);
-        const hours = Math.floor(utcTime);
-        const minutes = Math.floor((utcTime - hours) * 60);
-        const seconds = Math.floor(((utcTime - hours) * 60 - minutes) * 60);
-        
-        sunset.setUTCHours(hours, minutes, seconds, 0);
-        return sunset;
-    }
-    
-    private calculateSunsetSimple(date: Date, location: Location): Date {
-        const sunset = new Date(date);
-        sunset.setHours(18, 0, 0, 0);
-        return sunset;
     }
 
     calculateNakshatra(longitude: number): { nakshatra: number; pada: number; name: string } {
@@ -468,7 +390,7 @@ export class Ephemeris {
 
         try {
             // Use Swiss Ephemeris for accurate Julian Day calculation
-            return swisseph.swe_julday(year, month, day, hour, 1); // SE_GREG_CAL = 1
+            return swisseph.swe_julday(year, month, day, hour, swisseph.SE_GREG_CAL);
         } catch (error) {
             // High-precision fallback Julian Day calculation
             // Algorithm from Meeus "Astronomical Algorithms"
@@ -492,7 +414,7 @@ export class Ephemeris {
 
     private julianToDate(jd: number): Date {
         try {
-            const result = swisseph.swe_revjul(jd, 1); // SE_GREG_CAL = 1
+            const result = swisseph.swe_revjul(jd, swisseph.SE_GREG_CAL);
             return new Date(result.year, result.month - 1, result.day, 
                           Math.floor(result.hour), 
                           Math.floor((result.hour % 1) * 60));
@@ -507,30 +429,23 @@ export class Ephemeris {
     }
 
     private getFallbackPosition(body: string, date: Date): Position {
-        const dayOfYear = Math.floor((date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / 86400000);
-        const year = date.getFullYear();
-        const centuriesFromJ2000 = (year - 2000) / 100;
+        // Simple fallback using basic orbital elements
+        const daysSinceEpoch = (date.getTime() - new Date(2000, 0, 1).getTime()) / 86400000;
         
-        const basePositions: { [key: string]: { dailyMotion: number; epoch2000: number; lat: number } } = {
-            'Sun': { dailyMotion: 0.985647, epoch2000: 280.460, lat: 0 },
-            'Moon': { dailyMotion: 13.176396, epoch2000: 218.316, lat: 5.145 },
-            'Mercury': { dailyMotion: 4.092317, epoch2000: 252.251, lat: 3.395 },
-            'Venus': { dailyMotion: 1.602136, epoch2000: 181.980, lat: 3.395 },
-            'Mars': { dailyMotion: 0.524071, epoch2000: 355.433, lat: 1.850 },
-            'Jupiter': { dailyMotion: 0.083056, epoch2000: 34.351, lat: 1.304 },
-            'Saturn': { dailyMotion: 0.033371, epoch2000: 50.078, lat: 2.489 }
+        const positions: { [key: string]: { lon: number; motion: number } } = {
+            'Sun': { lon: 280.460, motion: 0.985647 },
+            'Moon': { lon: 218.316, motion: 13.176396 },
+            'Mercury': { lon: 252.251, motion: 4.092317 },
+            'Venus': { lon: 181.980, motion: 1.602136 },
+            'Mars': { lon: 355.433, motion: 0.524071 },
+            'Jupiter': { lon: 34.351, motion: 0.083056 },
+            'Saturn': { lon: 50.078, motion: 0.033371 }
         };
 
-        const bodyData = basePositions[body] || basePositions['Sun'];
-        const longitude = normalizeAngle(
-            bodyData.epoch2000 + 
-            bodyData.dailyMotion * dayOfYear + 
-            centuriesFromJ2000 * 1.7
-        );
+        const bodyData = positions[body] || positions['Sun'];
+        const longitude = normalizeAngle(bodyData.lon + bodyData.motion * daysSinceEpoch);
         
-        const latitude = Math.sin(dayOfYear * 0.1) * bodyData.lat;
-
-        return { longitude, latitude };
+        return { longitude, latitude: 0 };
     }
 
     getCurrentPlanets(date: Date = new Date(), ayanamsaId: number = 1): PlanetaryPosition[] {

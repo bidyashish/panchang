@@ -264,14 +264,16 @@ export class Planetary {
         // Each yoga spans 13°20' (360° / 27 yogas = 13.333...°)
         const sum = normalizeAngle(sunLongitude + moonLongitude);
         const yogaArc = 360 / 27;  // 13.333... degrees per yoga
-        const yogaNumber = Math.floor(sum / yogaArc) + 1;
         
-        // Ensure yoga number is within valid range (1-27)
-        const validYogaNumber = Math.max(1, Math.min(27, yogaNumber));
+        // Calculate yoga number (0-based for array indexing)
+        let yogaIndex = Math.floor(sum / yogaArc);
+        
+        // Ensure yoga index is within valid range (0-26)
+        yogaIndex = Math.max(0, Math.min(26, yogaIndex));
         
         return {
-            yoga: validYogaNumber,
-            name: yogaNames[validYogaNumber - 1] || 'Unknown'
+            yoga: yogaIndex + 1,  // 1-based numbering for output
+            name: yogaNames[yogaIndex]
         };
     }
 
@@ -285,34 +287,34 @@ export class Planetary {
         const elongation = normalizeAngle(moonLongitude - sunLongitude);
         
         // Each karana spans 6 degrees (half a tithi)
-        // There are 60 karanas in a lunar month (30 tithis × 2 karanas per tithi)
         const karanaArc = 6; // degrees
-        const karanaNumber = Math.floor(elongation / karanaArc) + 1;
+        let karanaIndex = Math.floor(elongation / karanaArc);
         
-        // Handle the cyclic nature of karanas
-        let karanaIndex: number;
-        let finalKaranaNumber: number;
+        // Handle the cyclic nature of karanas properly
+        // In a lunar month, there are 60 karanas total:
+        // - First 57 karanas: 7 movable karanas (Bava through Vishti) repeat in cycles
+        // - Last 4 karanas: fixed karanas (Shakuni, Chatushpada, Naga, Kimstughna)
         
-        if (karanaNumber <= 57) {
-            // First 57 karanas: 7 movable karanas repeat 8 times, plus one more cycle starts
-            karanaIndex = (karanaNumber - 1) % 7;
-            finalKaranaNumber = karanaNumber;
-        } else if (karanaNumber <= 60) {
-            // Last 4 karanas (58-60, plus one special case): fixed karanas
-            karanaIndex = 7 + (karanaNumber - 58);
-            finalKaranaNumber = karanaNumber;
+        let finalIndex: number;
+        let karanaNumber: number;
+        
+        if (karanaIndex < 57) {
+            // Movable karanas (first 57) - cycle through Bava to Vishti
+            finalIndex = karanaIndex % 7;
+            karanaNumber = karanaIndex + 1;
         } else {
-            // Handle overflow (shouldn't happen, but safety check)
-            karanaIndex = (karanaNumber - 1) % 7;
-            finalKaranaNumber = ((karanaNumber - 1) % 60) + 1;
+            // Fixed karanas (last 4)
+            const fixedIndex = Math.min(3, karanaIndex - 57);
+            finalIndex = 7 + fixedIndex;
+            karanaNumber = 58 + fixedIndex;
         }
         
         // Ensure we don't go beyond array bounds
-        karanaIndex = Math.min(Math.max(0, karanaIndex), karanaNames.length - 1);
+        finalIndex = Math.min(Math.max(0, finalIndex), karanaNames.length - 1);
         
         return {
-            karana: finalKaranaNumber,
-            name: karanaNames[karanaIndex]
+            karana: karanaNumber,
+            name: karanaNames[finalIndex]
         };
     }
 
