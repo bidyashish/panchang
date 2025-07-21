@@ -474,6 +474,20 @@ Here are timezone identifiers for common locations:
 - Node.js 16.0.0 or higher
 - Swiss Ephemeris data files (automatically handled)
 
+Each Swiss Ephemeris file covers a period of 600 years; there are 50
+planetary files, 50 Moon files for the whole time range of almost 30.000
+years and 18 main-asteroid files for the time range of 10.800 years.
+
+The file names are as follows:
+
+Planetary file|Moon file|Main asteroid file|Time range
+--------------|---------|------------------|-------------------------------
+seplm06.se1|semom06.se1|seasm06.se1|601 BCE -- 2 BCE
+sepl_00.se1|semo_00.se1|seas_00.se1|1 BCE -- 599 CE
+sepl_06.se1|semo_06.se1|seas_06.se1|600 CE -- 1199 CE
+sepl_12.se1|semo_12.se1|seas_12.se1|1200 CE -- 1799 CE
+sepl_18.se1|semo_18.se1|seas_18.se1|1800 CE -- 2399 CE
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.

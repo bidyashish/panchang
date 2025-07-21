@@ -39,7 +39,7 @@ export class Ephemeris {
     constructor(ephemerisPath?: string) {
         // Use hardcoded path to node_modules ephemeris files
         if (!ephemerisPath) {
-            this.ephemerisPath = path.join(__dirname, '../../node_modules/swisseph/ephe');
+            this.ephemerisPath = path.join(__dirname, '../node_modules/swisseph/ephe');
         } else {
             this.ephemerisPath = ephemerisPath;
         }
@@ -106,7 +106,7 @@ export class Ephemeris {
         try {
             const jd = this.dateToJulian(date);
             // Set Lahiri ayanamsa (SE_SIDM_LAHIRI = 1)
-            swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
+            swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, jd, 0);
             const ayanamsa = swisseph.swe_get_ayanamsa_ut(jd);
             return ayanamsa || this.getFallbackLahiriAyanamsa(date);
         } catch (error) {
@@ -178,7 +178,7 @@ export class Ephemeris {
         ayanamsaSystems.forEach(system => {
             try {
                 // Set the ayanamsa mode
-                swisseph.swe_set_sid_mode(system.id, 0, 0);
+                swisseph.swe_set_sid_mode(system.id, jd, 0);
                 
                 // Get ayanamsa value for the given date
                 const ayanamsaValue = swisseph.swe_get_ayanamsa_ut(jd);

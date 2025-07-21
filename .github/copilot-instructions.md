@@ -15,7 +15,7 @@ This is `@bidyashish/panchang` - a TypeScript/JavaScript library for astronomica
 
 ### Swiss Ephemeris Integration
 - **Ephemeris Files**: Uses `node_modules/swisseph/ephe` directory for data files
-- **Path Resolution**: Hardcoded to `__dirname + '../../node_modules/swisseph/ephe'`
+- **Path Resolution**: Hardcoded to `__dirname + '../node_modules/swisseph/ephe'`
 - **Cleanup Required**: Always call `.cleanup()` on `AstronomicalCalculator` instances to prevent memory leaks
 - **Constants**: Use `swisseph.SE_SUN` (0), `swisseph.SE_MOON` (1), etc. for planet IDs
 

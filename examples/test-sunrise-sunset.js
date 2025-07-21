@@ -1,7 +1,9 @@
+const path = require('path');
 const swisseph = require('swisseph');
 
+
 // Set up Swiss Ephemeris with ephemeris files
-swisseph.swe_set_ephe_path(__dirname + '/ephe');
+swisseph.swe_set_ephe_path(path.join(__dirname, '../ephe'));
 
 // Test date: July 20, 2025, 12:00 PM PDT (Kelowna, BC)
 const date = new Date('2025-07-20T12:00:00-07:00');

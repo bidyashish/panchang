@@ -1,5 +1,7 @@
+const path = require('path');
+const swisseph = require('swisseph');
+
 try {
-    const swisseph = require('swisseph');
     console.log('Swiss Ephemeris loaded successfully');
     console.log('Version:', swisseph.swe_version());
     
@@ -8,7 +10,7 @@ try {
     console.log('Test date:', testDate);
     
     // Set ephemeris path
-    const ephePath = __dirname + '/ephe';
+    const ephePath = path.join(__dirname, 'ephe');
     console.log('Setting ephemeris path to:', ephePath);
     swisseph.swe_set_ephe_path(ephePath);
     
@@ -25,7 +27,7 @@ try {
     console.log('Moon position:', moonPos);
     
     // Get Lahiri ayanamsa
-    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
+    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, jd, 0);
     const ayanamsa = swisseph.swe_get_ayanamsa_ut(jd);
     console.log('Lahiri Ayanamsa:', ayanamsa);
     
