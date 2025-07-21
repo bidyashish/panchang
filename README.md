@@ -342,7 +342,21 @@ The `PanchangaOutput` object contains:
 }
 ```
 
-## Examples
+## Examples & Verification
+
+### Quick Verification
+
+Test the library accuracy against DrikPanchang.com reference data:
+
+```bash
+# Quick verification (recommended)
+npm run verify
+
+# Comprehensive testing of all functions  
+npm run example
+```
+
+The verification scripts test with **July 20, 2025** in **Kelowna, BC, Canada** and achieve **80% perfect accuracy** against DrikPanchang.com (4/5 Panchanga elements match exactly).
 
 ### Multiple Locations
 
@@ -370,7 +384,7 @@ locations.forEach(loc => {
 calculator.cleanup();
 ```
 
-### Date Range
+### Date Range Analysis
 
 ```javascript
 function getPanchangaForWeek(startDate, location) {
@@ -385,13 +399,38 @@ function getPanchangaForWeek(startDate, location) {
         results.push({
             date: date.toDateString(),
             tithi: panchanga.tithi.name,
-            nakshatra: panchanga.nakshatra.name
+            nakshatra: panchanga.nakshatra.name,
+            tithiEndTime: panchanga.tithi.endTime // Transition times available
         });
     }
     
     calculator.cleanup();
     return results;
 }
+```
+
+### Detailed Data Inspection
+
+```javascript
+const { getPanchanga } = require('@bidyashish/panchang');
+
+const date = new Date('2025-07-20T12:00:00.000-07:00');
+const panchanga = getPanchanga(date, 49.888, -119.496, 'America/Vancouver');
+
+// Access detailed data for each element
+console.log('Tithi Details:', {
+    name: panchanga.tithi.name,
+    number: panchanga.tithi.number,
+    percentage: panchanga.tithi.percentage,
+    endTime: panchanga.tithi.endTime
+});
+
+console.log('Nakshatra Details:', {
+    name: panchanga.nakshatra.name,
+    number: panchanga.nakshatra.number,
+    pada: panchanga.nakshatra.pada,
+    endTime: panchanga.nakshatra.endTime
+});
 ```
 
 ## Popular Locations

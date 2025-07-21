@@ -1,117 +1,103 @@
 # Examples Directory
 
-This directory contains practical examples and tests for the Astronomical Calculator library.
+This directory contains focused examples and verification scripts for the Astronomical Calculator library.
 
 ## Files Overview
 
-### 📚 Core Examples
-- **`usage-example.js`** - Main usage examples showing how to use the library
-- **`exports-test.js`** - Comprehensive test of all exported functions
-- **`validation-test.js`** - Validation against reference astronomical data
-- **`today-test.ts`** - TypeScript test for today's Panchanga calculations
-- **`quick-test.js`** - Quick ephemeris path test and basic Panchanga (no build required)
-- **`verify-drikpanchang.js`** - Verification against DrikPanchang.com reference data
-- **`kelowna-precise-test.js`** - Precise comparison with DrikPanchang for Kelowna, BC
+### � **Verification Scripts**
+- **`simple-verify.js`** - Quick Panchanga verification against DrikPanchang.com with detailed library data output
+- **`library-verification.js`** - Comprehensive test of all library functions with accuracy verification
 
-### 🌟 Feature Demonstrations
-- **`ayanamsa-example.js`** - Complete demonstration of ayanamsa systems
-- **`location-name-example.js`** - Examples of location name functionality in reports
-- **`planetary-positions-example.js`** - Planetary position calculations with Vedic astrology
-- **`complete-astrological-report.js`** - Full astrological report generation
-- **`enhanced-features-demo.js`** - Showcase of advanced features
+## Current Examples
 
-### 🛠️ Utilities
-- **`common-utils.js`** - Shared utilities, constants, and formatting functions
+### 📊 **simple-verify.js** 
+**Purpose:** Simple verification of core Panchanga calculation against DrikPanchang.com
+
+**Features:**
+- Tests `getPanchanga()` function with reference date (July 20, 2025)
+- Shows detailed library data for each Panchanga element
+- Verifies against DrikPanchang.com reference data
+- **Accuracy:** 80% perfect match (4/5 elements)
+- Displays complete JSON objects for debugging
+
+**Usage:**
+```bash
+npm run verify
+# or
+node examples/simple-verify.js
+```
+
+### 🧪 **library-verification.js**
+**Purpose:** Comprehensive testing of all library functions
+
+**Features:**
+- Tests all core functions: `getPanchanga()`, `getPanchangaReport()`, `getCurrentPlanets()`, `getAyanamsa()`, `getSpecificAyanamsa()`, `AstronomicalCalculator` class
+- DrikPanchang.com accuracy verification
+- Transition time calculations
+- Planetary positions with Rashi/Nakshatra mapping
+- Swiss Ephemeris precision validation
+
+**Usage:**
+```bash
+npm run example
+# or  
+node examples/library-verification.js
+```
 
 ## Running Examples
 
 ### Prerequisites
 ```bash
-# For most examples (requires built project)
+# Build the project first
 npm run build
-
-# For quick test only (no build required)
-npm run test:quick
 ```
 
-### Run Individual Examples
+### Quick Commands
 ```bash
-# Quick test (no build needed)
-npm run test:quick
+# Simple verification (recommended)
+npm run verify
 
-# Verify against DrikPanchang.com (basic, no build needed)
-npm run verify:drik
-
-# Basic usage examples
-node examples/usage-example.js
-
-# Test all exports
-node examples/exports-test.js
-
-# Validation test
-node examples/validation-test.js
-
-# Precise DrikPanchang verification (requires build)
-npm run build && npm run test:kelowna
+# Comprehensive verification
+npm run example
 ```
 
-# Ayanamsa systems demonstration
-node examples/ayanamsa-example.js
+## Verification Results
 
-# Planetary positions
-node examples/planetary-positions-example.js
+Both scripts test against the reference date **July 20, 2025, 12:00 PM PDT** in **Kelowna, BC, Canada**:
 
-# Complete astrological report
-node examples/complete-astrological-report.js
-```
+### 🎯 **Accuracy vs DrikPanchang.com**
+- ✅ **Vara:** Sunday (Perfect match)
+- ✅ **Tithi:** Ekadashi (Perfect match) 
+- ✅ **Nakshatra:** Krittika (Perfect match)
+- ✅ **Yoga:** Ganda (Perfect match)
+- 🔸 **Karana:** Balava vs Bava (Close match - 1 karana difference)
+- **Overall:** 80% perfect accuracy
 
-### TypeScript Examples
-```bash
-# Today's Panchanga test (requires ts-node)
-npm run dev examples/today-test.ts
-```
+### 📊 **Detailed Library Data Available**
+- Complete JSON objects for each element
+- Numerical IDs and percentages
+- Precise transition times (when elements change)
+- Additional calculations (sunrise, sunset, moon phase, Rahu Kaal)
 
-## Example Categories
+## Core Functions Tested
 
-### 🔍 **Testing Examples**
-- `exports-test.js` - Validates all package exports work correctly
-- `validation-test.js` - Validates calculations against known reference data
-- `today-test.ts` - Tests current date Panchanga calculation (TypeScript)
-- `quick-test.js` - Quick verification without building (Node.js only)
-- `verify-drikpanchang.js` - Basic verification against DrikPanchang.com
-- `kelowna-precise-test.js` - Precise DrikPanchang comparison for Kelowna, BC
+Both examples demonstrate these library functions:
+- `getPanchanga()` - Core Panchanga calculation with transition times
+- `getPanchangaReport()` - Formatted text reports  
+- `getCurrentPlanets()` - Planetary positions with Vedic astrology data
+- `getAyanamsa()` / `getSpecificAyanamsa()` - Ayanamsa systems (40+ available)
+- `AstronomicalCalculator` class - Complete object-oriented API
 
-### 📊 **Feature Examples**
-- `ayanamsa-example.js` - Shows 40+ ayanamsa systems and comparisons
-- `location-name-example.js` - Demonstrates location names in reports
-- `enhanced-features-demo.js` - Advanced features and historical comparisons
+## Technical Details
 
-### 🪐 **Astrological Examples**
-- `planetary-positions-example.js` - Planetary positions with Vedic interpretations
-- `complete-astrological-report.js` - Full birth chart analysis
-
-### 📝 **Basic Usage**
-- `usage-example.js` - Simple API usage patterns
-
-## Common Functions Tested
-
-All examples demonstrate these core functions:
-- `getPanchanga()` - Basic Panchanga calculation
-- `getPanchangaReport()` - Formatted text reports
-- `getCurrentPlanets()` - Planetary positions
-- `getAyanamsa()` / `getSpecificAyanamsa()` - Ayanamsa systems
-- `AstronomicalCalculator` class - Complete calculator API
-
-## Error Handling
-
-Examples include comprehensive error handling using the shared utilities in `common-utils.js`:
-- Graceful fallbacks for missing data
-- Validation of inputs and outputs
-- Debug information for troubleshooting
-
-## Data Sources
-
-All calculations use:
-- Swiss Ephemeris for high precision
+**Data Sources:**
+- Swiss Ephemeris v0.5.17 for high-precision calculations
+- Lahiri Ayanamsa (24.2140°) as primary reference
 - Traditional Vedic astrology interpretations
-- Multiple ayanamsa systems for comparison
+
+**Key Features Verified:**
+- Timezone-aware calculations (PDT/PST support)
+- Transition time calculations for all elements
+- Multiple ayanamsa systems support  
+- Error handling and resource cleanup
+- Class-based and function-based API consistency

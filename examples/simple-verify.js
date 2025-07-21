@@ -34,7 +34,60 @@ try {
     // Calculate Panchanga
     const result = getPanchanga(testDate, location.latitude, location.longitude, location.timezone);
     
-    console.log('\n📊 CALCULATION RESULTS:');
+    console.log('\n📊 DETAILED LIBRARY DATA:');
+    console.log('=====================================');
+    
+    // VARA (Weekday) Details
+    console.log('\n🗓️  VARA (WEEKDAY) DATA:');
+    console.log(`   Name: ${result.vara.name}`);
+    console.log(`   Number: ${result.vara.vara}`);
+    console.log(`   Full vara object:`, JSON.stringify(result.vara, null, 2));
+    
+    // TITHI Details  
+    console.log('\n🌙 TITHI DATA:');
+    console.log(`   Name: ${result.tithi.name}`);
+    console.log(`   Number: ${result.tithi.tithi}`);
+    console.log(`   Paksha: ${result.tithi.paksha}`);
+    console.log(`   Percentage: ${result.tithi.percentage ? result.tithi.percentage.toFixed(1) + '%' : 'N/A'}`);
+    console.log(`   End Time: ${result.tithi.endTime ? result.tithi.endTime.toLocaleString('en-US', { timeZone: location.timezone }) : 'N/A'}`);
+    console.log(`   Full tithi object:`, JSON.stringify(result.tithi, null, 2));
+    
+    // NAKSHATRA Details
+    console.log('\n⭐ NAKSHATRA DATA:');
+    console.log(`   Name: ${result.nakshatra.name}`);
+    console.log(`   Number: ${result.nakshatra.nakshatra}`);
+    console.log(`   Pada: ${result.nakshatra.pada}`);
+    console.log(`   Lord: ${result.nakshatra.lord || 'N/A'}`);
+    console.log(`   Percentage: ${result.nakshatra.percentage ? result.nakshatra.percentage.toFixed(1) + '%' : 'N/A'}`);
+    console.log(`   End Time: ${result.nakshatra.endTime ? result.nakshatra.endTime.toLocaleString('en-US', { timeZone: location.timezone }) : 'N/A'}`);
+    console.log(`   Full nakshatra object:`, JSON.stringify(result.nakshatra, null, 2));
+    
+    // YOGA Details
+    console.log('\n🧘 YOGA DATA:');
+    console.log(`   Name: ${result.yoga.name}`);
+    console.log(`   Number: ${result.yoga.yoga}`);
+    console.log(`   Percentage: ${result.yoga.percentage ? result.yoga.percentage.toFixed(1) + '%' : 'N/A'}`);
+    console.log(`   End Time: ${result.yoga.endTime ? result.yoga.endTime.toLocaleString('en-US', { timeZone: location.timezone }) : 'N/A'}`);
+    console.log(`   Full yoga object:`, JSON.stringify(result.yoga, null, 2));
+    
+    // KARANA Details
+    console.log('\n🔄 KARANA DATA:');
+    console.log(`   Name: ${result.karana.name}`);
+    console.log(`   Number: ${result.karana.karana}`);
+    console.log(`   Type: ${result.karana.type || 'N/A'}`);
+    console.log(`   End Time: ${result.karana.endTime ? result.karana.endTime.toLocaleString('en-US', { timeZone: location.timezone }) : 'N/A'}`);
+    console.log(`   Full karana object:`, JSON.stringify(result.karana, null, 2));
+    
+    // Additional Calculated Data
+    console.log('\n🌍 ADDITIONAL CALCULATED DATA:');
+    console.log(`   Moon Phase: ${result.moonPhase || 'N/A'}`);
+    console.log(`   Sunrise: ${result.sunrise ? result.sunrise.toLocaleString('en-US', { timeZone: location.timezone }) : 'N/A'}`);
+    console.log(`   Sunset: ${result.sunset ? result.sunset.toLocaleString('en-US', { timeZone: location.timezone }) : 'N/A'}`);
+    if (result.rahuKaal) {
+        console.log(`   Rahu Kaal: ${result.rahuKaal.start ? result.rahuKaal.start.toLocaleString('en-US', { timeZone: location.timezone }) : 'N/A'} - ${result.rahuKaal.end ? result.rahuKaal.end.toLocaleString('en-US', { timeZone: location.timezone }) : 'N/A'}`);
+    }
+    
+    console.log('\n📊 SUMMARY RESULTS:');
     console.log(`   Vara (Day):   ${result.vara.name}`);
     console.log(`   Tithi:        ${result.tithi.name} (${result.tithi.paksha} Paksha)`);
     console.log(`   Nakshatra:    ${result.nakshatra.name}`);
@@ -64,23 +117,10 @@ try {
     console.log(`   Perfect matches: ${matches}/5 (${(matches/5*100).toFixed(0)}%)`);
     console.log(`   Status: ${matches >= 4 ? '🎉 EXCELLENT' : matches >= 3 ? '✅ GOOD' : '⚠️  NEEDS REVIEW'}`);
     
-    // Show transition times if available
-    if (result.tithi.endTime || result.nakshatra.endTime) {
-        console.log('\n⏰ TRANSITION TIMES:');
-        if (result.tithi.endTime) {
-            console.log(`   Tithi ends: ${result.tithi.endTime.toLocaleString('en-US', { timeZone: location.timezone })}`);
-        }
-        if (result.nakshatra.endTime) {
-            console.log(`   Nakshatra ends: ${result.nakshatra.endTime.toLocaleString('en-US', { timeZone: location.timezone })}`);
-        }
-    }
-    
-    // Additional info
-    if (result.sunrise && result.sunset) {
-        console.log('\n🌅 SUNRISE/SUNSET:');
-        console.log(`   Sunrise: ${result.sunrise.toLocaleString('en-US', { timeZone: location.timezone })}`);
-        console.log(`   Sunset: ${result.sunset.toLocaleString('en-US', { timeZone: location.timezone })}`);
-    }
+    // Show complete result object for debugging
+    console.log('\n🔍 COMPLETE LIBRARY RESULT OBJECT:');
+    console.log('=====================================');
+    console.log(JSON.stringify(result, null, 2));
     
     console.log('\n✨ Verification complete!');
     
