@@ -70,10 +70,10 @@ try {
     
     // Show transition times if available
     if (panchangaResults.tithi.endTime) {
-        console.log(`   Tithi ends: ${panchangaResults.tithi.endTime.toLocaleString('en-US', { timeZone: LOCATION.timezone })}`);
+        console.log(`   Tithi ends: ${panchangaResults.tithi.endTime.toISOString()}`);
     }
     if (panchangaResults.nakshatra.endTime) {
-        console.log(`   Nakshatra ends: ${panchangaResults.nakshatra.endTime.toLocaleString('en-US', { timeZone: LOCATION.timezone })}`);
+        console.log(`   Nakshatra ends: ${panchangaResults.nakshatra.endTime.toISOString()}`);
     }
     
     // Verification against DrikPanchang

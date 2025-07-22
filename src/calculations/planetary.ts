@@ -187,7 +187,8 @@ export class Planetary {
         }
 
         // Apply small variations based on date for more realistic simulation
-        const daysSinceEpoch = (date.getTime() - new Date('2000-01-01').getTime()) / (1000 * 60 * 60 * 24);
+        const epoch = new Date(Date.UTC(2000, 0, 1, 0, 0, 0, 0)); // J2000.0 epoch
+        const daysSinceEpoch = (date.getTime() - epoch.getTime()) / (1000 * 60 * 60 * 24);
         const variation = Math.sin(daysSinceEpoch / 365.25) * 0.001;
 
         return {
@@ -342,7 +343,8 @@ export class Planetary {
         const orbitalParams = this.orbitalData[planet];
         if (!orbitalParams) return 0;
 
-        const daysSinceEpoch = (date.getTime() - new Date('2000-01-01').getTime()) / (1000 * 60 * 60 * 24);
+        const epoch = new Date(Date.UTC(2000, 0, 1, 0, 0, 0, 0)); // J2000.0 epoch
+        const daysSinceEpoch = (date.getTime() - epoch.getTime()) / (1000 * 60 * 60 * 24);
         const meanMotion = 360 / orbitalParams.orbitalPeriod; // degrees per day
         
         return normalizeAngle(meanMotion * daysSinceEpoch);

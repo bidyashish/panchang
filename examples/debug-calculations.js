@@ -2,7 +2,7 @@ const path = require('path');
 const swisseph = require('swisseph');
 
 // Set ephemeris path
-swisseph.swe_set_ephe_path(path.join(__dirname, 'ephe'));
+swisseph.swe_set_ephe_path(path.join(__dirname, '../ephe'));
 
 // Test date: July 20, 2025, 12:00 PM PDT
 const testDate = new Date('2025-07-20T12:00:00.000-07:00');
@@ -14,7 +14,7 @@ const month = testDate.getUTCMonth() + 1;
 const day = testDate.getUTCDate();
 const hour = testDate.getUTCHours() + testDate.getUTCMinutes()/60;
 
-const jd = swisseph.swe_julday(testDate.year, testDate.month, testDate.day, testDate.hour, swisseph.SE_GREG_CAL);
+const jd = swisseph.swe_julday(year, month, day, hour, swisseph.SE_GREG_CAL);
 console.log('Julian Day:', jd);
 
 // Calculate positions

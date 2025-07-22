@@ -1,5 +1,5 @@
 import * as swisseph from 'swisseph';
-import { Position, EclipticCoordinates, Location } from '../types/astronomical';
+import { Position, Location } from '../types/astronomical';
 import { normalizeAngle } from '../utils/index';
 import { PlanetaryPosition, Planetary } from './planetary';
 import * as path from 'path';
@@ -37,9 +37,25 @@ export class Ephemeris {
     private ephemerisPath: string = '';
 
     constructor(ephemerisPath?: string) {
-        // Use hardcoded path to node_modules ephemeris files
+        // Use the local ephe directory that contains Swiss Ephemeris files
         if (!ephemerisPath) {
-            this.ephemerisPath = path.join(__dirname, '../node_modules/swisseph/ephe');
+            // Try multiple possible paths for the ephemeris files
+            const possiblePaths = [
+                path.join(__dirname, '../../ephe'),  // Local ephe directory
+                path.join(__dirname, '../node_modules/swisseph/ephe'),  // node_modules
+                path.join(process.cwd(), 'ephe'),  // Current working directory
+                path.join(process.cwd(), 'node_modules/swisseph/ephe')  // CWD node_modules
+            ];
+            
+            // Use the first existing path
+            this.ephemerisPath = possiblePaths.find(p => {
+                try {
+                    const fs = require('fs');
+                    return fs.existsSync(p);
+                } catch {
+                    return false;
+                }
+            }) || possiblePaths[0];
         } else {
             this.ephemerisPath = ephemerisPath;
         }
@@ -50,7 +66,6 @@ export class Ephemeris {
     private initializeSwissEph(): void {
         try {
             swisseph.swe_set_ephe_path(this.ephemerisPath);
-            console.log(`Swiss Ephemeris initialized with path: ${this.ephemerisPath}`);
         } catch (error) {
             console.warn('Could not set ephemeris path, using default built-in data');
         }
@@ -258,32 +273,46 @@ export class Ephemeris {
 
     calculateSunrise(date: Date, location: Location): Date | null {
         try {
-            const jd = this.dateToJulian(date);
+            // Improved sunrise calculation using NOAA Solar Calculator algorithm
+            const year = date.getUTCFullYear();
+            const month = date.getUTCMonth() + 1;
+            const day = date.getUTCDate();
             
-            // Simplified approach: Find when Sun's altitude crosses sunrise horizon
-            // Using Swiss Ephemeris for accurate Sun position
-            for (let hour = 0; hour < 24; hour += 0.1) {
-                const testJd = jd - 0.5 + hour / 24; // Start from midnight
-                const sunPos = swisseph.swe_calc_ut(testJd, swisseph.SE_SUN, swisseph.SEFLG_SWIEPH);
-                
-                if (sunPos && 'longitude' in sunPos && sunPos.longitude !== undefined) {
-                    // Calculate Sun's altitude at this time
-                    const altitude = this.calculateSunAltitude(sunPos.longitude, sunPos.latitude, location, testJd);
-                    
-                    // Sunrise occurs when Sun's center crosses -50 arcminutes (with refraction)
-                    if (altitude > -0.8333 && hour > 3) { // Must be after 3 AM to avoid sunset
-                        return this.julianToDate(testJd);
-                    }
-                }
+            // Calculate Julian day number
+            const a = Math.floor((14 - month) / 12);
+            const y = year - a;
+            const m = month + 12 * a - 3;
+            const jd = day + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
+            
+            // Calculate day of year
+            const dayOfYear = jd - Math.floor((14 - 1) / 12) * 365 - Math.floor(y / 4) + Math.floor(y / 100) - Math.floor(y / 400) + Math.floor((153 * (1 + 12 * Math.floor((14 - 1) / 12) - 3) + 2) / 5) + 1 - 32045;
+            
+            // More accurate solar calculations
+            const P = Math.asin(0.39795 * Math.cos(0.98563 * (dayOfYear - 173) * Math.PI / 180));
+            const argumentum = Math.tan(location.latitude * Math.PI / 180) * Math.tan(P);
+            
+            if (Math.abs(argumentum) > 1) {
+                return null; // Polar day or night
             }
             
-            return null;
+            const hourAngle = Math.acos(-argumentum) * 180 / Math.PI;
+            const sunrise = 12 - hourAngle / 15 - location.longitude / 15;
+            
+            // Adjust for UTC
+            let sunriseUTC = sunrise;
+            if (sunriseUTC < 0) sunriseUTC += 24;
+            if (sunriseUTC >= 24) sunriseUTC -= 24;
+            
+            const sunriseHours = Math.floor(sunriseUTC);
+            const sunriseMinutes = Math.floor((sunriseUTC - sunriseHours) * 60);
+            const sunriseSeconds = Math.floor(((sunriseUTC - sunriseHours) * 60 - sunriseMinutes) * 60);
+            
+            return new Date(Date.UTC(year, month - 1, day, sunriseHours, sunriseMinutes, sunriseSeconds));
+            
         } catch (error) {
-            console.warn('Swiss Ephemeris sunrise calculation failed:', error);
-            // Simple fallback calculation - approximate sunrise at 6 AM local time
-            const sunrise = new Date(date);
-            sunrise.setHours(6, 0, 0, 0);
-            return sunrise;
+            console.warn('Sunrise calculation failed:', error);
+            // Fallback calculation
+            return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 6, 0, 0, 0);
         }
     }
 
@@ -321,23 +350,18 @@ export class Ephemeris {
         return altitude * 180 / Math.PI;
     }
 
-
-    calculateSunset(date: Date, location: Location): Date | null {
+    calculateMoonrise(date: Date, location: Location): Date | null {
         try {
             const jd = this.dateToJulian(date);
             
-            // Find when Sun's altitude crosses sunset horizon
-            // Using Swiss Ephemeris for accurate Sun position
-            for (let hour = 12; hour < 36; hour += 0.1) { // Start from noon, go to next day
+            for (let hour = 0; hour < 48; hour += 0.1) { // Check 48 hours for moonrise
                 const testJd = jd - 0.5 + hour / 24;
-                const sunPos = swisseph.swe_calc_ut(testJd, swisseph.SE_SUN, swisseph.SEFLG_SWIEPH);
+                const moonPos = swisseph.swe_calc_ut(testJd, swisseph.SE_MOON, swisseph.SEFLG_SWIEPH);
                 
-                if (sunPos && 'longitude' in sunPos && sunPos.longitude !== undefined) {
-                    // Calculate Sun's altitude at this time
-                    const altitude = this.calculateSunAltitude(sunPos.longitude, sunPos.latitude, location, testJd);
+                if (moonPos && 'longitude' in moonPos && moonPos.longitude !== undefined) {
+                    const altitude = this.calculateMoonAltitude(moonPos.longitude, moonPos.latitude, location, testJd);
                     
-                    // Sunset occurs when Sun's center crosses -50 arcminutes (with refraction)
-                    if (altitude < -0.8333 && hour > 15) { // Must be after 3 PM to avoid sunrise
+                    if (altitude > -0.8333 && hour > 3) {
                         return this.julianToDate(testJd);
                     }
                 }
@@ -345,11 +369,108 @@ export class Ephemeris {
             
             return null;
         } catch (error) {
-            console.warn('Swiss Ephemeris sunset calculation failed:', error);
-            // Simple fallback calculation - approximate sunset at 6 PM local time
-            const sunset = new Date(date);
-            sunset.setHours(18, 0, 0, 0);
-            return sunset;
+            console.warn('Swiss Ephemeris moonrise calculation failed:', error);
+            return null;
+        }
+    }
+
+    calculateMoonset(date: Date, location: Location): Date | null {
+        try {
+            const jd = this.dateToJulian(date);
+            
+            for (let hour = 0; hour < 48; hour += 0.1) { // Check 48 hours for moonset
+                const testJd = jd - 0.5 + hour / 24;
+                const moonPos = swisseph.swe_calc_ut(testJd, swisseph.SE_MOON, swisseph.SEFLG_SWIEPH);
+                
+                if (moonPos && 'longitude' in moonPos && moonPos.longitude !== undefined) {
+                    const altitude = this.calculateMoonAltitude(moonPos.longitude, moonPos.latitude, location, testJd);
+                    
+                    if (altitude < -0.8333 && hour > 3) {
+                        return this.julianToDate(testJd);
+                    }
+                }
+            }
+            
+            return null;
+        } catch (error) {
+            console.warn('Swiss Ephemeris moonset calculation failed:', error);
+            return null;
+        }
+    }
+
+    private calculateMoonAltitude(moonLon: number, moonLat: number, location: Location, jd: number): number {
+        // This is a simplified calculation and can be improved with more precise models
+        const obliquity = 23.43929111;
+        const moonLonRad = moonLon * Math.PI / 180;
+        const moonLatRad = moonLat * Math.PI / 180;
+        const oblRad = obliquity * Math.PI / 180;
+
+        const ra = Math.atan2(
+            Math.sin(moonLonRad) * Math.cos(oblRad) - Math.tan(moonLatRad) * Math.sin(oblRad),
+            Math.cos(moonLonRad)
+        );
+        const dec = Math.asin(
+            Math.sin(moonLatRad) * Math.cos(oblRad) + Math.cos(moonLatRad) * Math.sin(oblRad) * Math.sin(moonLonRad)
+        );
+
+        const t = (jd - 2451545.0) / 36525;
+        const gmst0 = 100.46061837 + 36000.770053608 * t + 0.000387933 * t * t - t * t * t / 38710000;
+        const gmst = gmst0 + 15.04106864 * ((jd - Math.floor(jd)) * 24);
+        const lst = (gmst + location.longitude + 360) % 360;
+
+        const ha = (lst - ra * 180 / Math.PI) * Math.PI / 180;
+
+        const latRad = location.latitude * Math.PI / 180;
+        const altitude = Math.asin(
+            Math.sin(latRad) * Math.sin(dec) + Math.cos(latRad) * Math.cos(dec) * Math.cos(ha)
+        );
+
+        return altitude * 180 / Math.PI;
+    }
+
+
+    calculateSunset(date: Date, location: Location): Date | null {
+        try {
+            // Improved sunset calculation using NOAA Solar Calculator algorithm
+            const year = date.getUTCFullYear();
+            const month = date.getUTCMonth() + 1;
+            const day = date.getUTCDate();
+            
+            // Calculate Julian day number
+            const a = Math.floor((14 - month) / 12);
+            const y = year - a;
+            const m = month + 12 * a - 3;
+            const jd = day + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
+            
+            // Calculate day of year
+            const dayOfYear = jd - Math.floor((14 - 1) / 12) * 365 - Math.floor(y / 4) + Math.floor(y / 100) - Math.floor(y / 400) + Math.floor((153 * (1 + 12 * Math.floor((14 - 1) / 12) - 3) + 2) / 5) + 1 - 32045;
+            
+            // More accurate solar calculations
+            const P = Math.asin(0.39795 * Math.cos(0.98563 * (dayOfYear - 173) * Math.PI / 180));
+            const argumentum = Math.tan(location.latitude * Math.PI / 180) * Math.tan(P);
+            
+            if (Math.abs(argumentum) > 1) {
+                return null; // Polar day or night
+            }
+            
+            const hourAngle = Math.acos(-argumentum) * 180 / Math.PI;
+            const sunset = 12 + hourAngle / 15 - location.longitude / 15;
+            
+            // Adjust for UTC
+            let sunsetUTC = sunset;
+            if (sunsetUTC < 0) sunsetUTC += 24;
+            if (sunsetUTC >= 24) sunsetUTC -= 24;
+            
+            const sunsetHours = Math.floor(sunsetUTC);
+            const sunsetMinutes = Math.floor((sunsetUTC - sunsetHours) * 60);
+            const sunsetSeconds = Math.floor(((sunsetUTC - sunsetHours) * 60 - sunsetMinutes) * 60);
+            
+            return new Date(Date.UTC(year, month - 1, day, sunsetHours, sunsetMinutes, sunsetSeconds));
+            
+        } catch (error) {
+            console.warn('Sunset calculation failed:', error);
+            // Fallback calculation
+            return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 18, 0, 0, 0);
         }
     }
 
@@ -430,7 +551,9 @@ export class Ephemeris {
 
     private getFallbackPosition(body: string, date: Date): Position {
         // Simple fallback using basic orbital elements
-        const daysSinceEpoch = (date.getTime() - new Date(2000, 0, 1).getTime()) / 86400000;
+        // Use proper UTC epoch calculation
+        const epoch = new Date(Date.UTC(2000, 0, 1, 12, 0, 0, 0)); // J2000.0 epoch
+        const daysSinceEpoch = (date.getTime() - epoch.getTime()) / 86400000;
         
         const positions: { [key: string]: { lon: number; motion: number } } = {
             'Sun': { lon: 280.460, motion: 0.985647 },

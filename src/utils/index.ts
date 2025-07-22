@@ -1,23 +1,146 @@
 /**
  * Utility functions for astronomical calculations
  */
+import { format, formatInTimeZone } from 'date-fns-tz';
 
-export function formatDate(date: Date): string {
-    return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+/**
+ * Format date as UTC string (ISO format)
+ * @param date Date to format
+ * @returns UTC string in ISO format
+ */
+export function formatDateUTC(date: Date | null): string {
+    if (!date) return 'N/A';
+    return date.toISOString();
 }
 
-export function degreesToRadians(degrees: number): number {
-    return degrees * (Math.PI / 180);
+/**
+ * Format time as UTC time string
+ * @param date Date to format
+ * @returns UTC time string (HH:MM:SS format)
+ */
+export function formatTimeUTC(date: Date | null): string {
+    if (!date) return 'N/A';
+    return date.toISOString().substring(11, 19); // Extract HH:MM:SS from ISO string
 }
 
-export function radiansToDegrees(radians: number): number {
-    return radians * (180 / Math.PI);
+/**
+ * Format date/time in any timezone using date-fns-tz
+ * @param date Date to format
+ * @param timezone IANA timezone identifier (e.g., 'America/Vancouver', 'Asia/Kolkata')
+ * @param formatPattern Format pattern (default: 'yyyy-MM-dd HH:mm:ss')
+ * @returns Formatted date string in the specified timezone
+ */
+export function formatDateInTimezone(
+    date: Date | null, 
+    timezone: string = 'UTC', 
+    formatPattern: string = 'yyyy-MM-dd HH:mm:ss'
+): string {
+    if (!date) return 'N/A';
+    try {
+        return formatInTimeZone(date, timezone, formatPattern);
+    } catch (error) {
+        // Fallback to UTC if timezone is invalid
+        return formatInTimeZone(date, 'UTC', formatPattern);
+    }
+}
+
+/**
+ * Format time only in any timezone
+ * @param date Date to format
+ * @param timezone IANA timezone identifier
+ * @param formatPattern Time format pattern (default: 'HH:mm:ss')
+ * @returns Formatted time string in the specified timezone
+ */
+export function formatTimeInTimezone(
+    date: Date | null, 
+    timezone: string = 'UTC', 
+    formatPattern: string = 'HH:mm:ss'
+): string {
+    if (!date) return 'N/A';
+    try {
+        return formatInTimeZone(date, timezone, formatPattern);
+    } catch (error) {
+        return formatInTimeZone(date, 'UTC', formatPattern);
+    }
+}
+
+/**
+ * Format date range in any timezone
+ * @param startDate Start date
+ * @param endDate End date
+ * @param timezone IANA timezone identifier
+ * @param formatPattern Format pattern for times (default: 'HH:mm:ss')
+ * @returns Formatted time range string in the specified timezone
+ */
+export function formatTimeRangeInTimezone(
+    startDate: Date | null, 
+    endDate: Date | null, 
+    timezone: string = 'UTC',
+    formatPattern: string = 'HH:mm:ss'
+): string {
+    if (!startDate || !endDate) return 'N/A';
+    const start = formatTimeInTimezone(startDate, timezone, formatPattern);
+    const end = formatTimeInTimezone(endDate, timezone, formatPattern);
+    return `${start} - ${end}`;
+}
+
+/**
+ * Format date range as UTC strings (backward compatibility)
+ * @param startDate Start date
+ * @param endDate End date
+ * @returns Formatted UTC time range string
+ */
+export function formatTimeRangeUTC(startDate: Date | null, endDate: Date | null): string {
+    return formatTimeRangeInTimezone(startDate, endDate, 'UTC');
+}
+
+/**
+ * Get formatted date object with multiple timezone representations
+ * @param date Date to format
+ * @param primaryTimezone Primary timezone for display
+ * @returns Object with multiple format options
+ */
+export interface FormattedDateInfo {
+    /** Original Date object */
+    original: Date;
+    /** UTC ISO string */
+    utc: string;
+    /** Formatted in primary timezone */
+    local: string;
+    /** Time only in primary timezone */
+    localTime: string;
+    /** Date only in primary timezone */
+    localDate: string;
+    /** Primary timezone used */
+    timezone: string;
+    /** Unix timestamp */
+    timestamp: number;
+    /** Year in primary timezone */
+    year: number;
+    /** Month in primary timezone (1-12) */
+    month: number;
+    /** Day in primary timezone (1-31) */
+    day: number;
+}
+
+export function getFormattedDateInfo(
+    date: Date | null, 
+    primaryTimezone: string = 'UTC'
+): FormattedDateInfo | null {
+    if (!date) return null;
+    
+    return {
+        original: date,
+        utc: date.toISOString(),
+        local: formatDateInTimezone(date, primaryTimezone, 'yyyy-MM-dd HH:mm:ss zzz'),
+        localTime: formatTimeInTimezone(date, primaryTimezone, 'HH:mm:ss'),
+        localDate: formatDateInTimezone(date, primaryTimezone, 'yyyy-MM-dd'),
+        timezone: primaryTimezone,
+        timestamp: date.getTime(),
+        year: parseInt(formatInTimeZone(date, primaryTimezone, 'yyyy')),
+        month: parseInt(formatInTimeZone(date, primaryTimezone, 'MM')),
+        day: parseInt(formatInTimeZone(date, primaryTimezone, 'dd'))
+    };
 }
 
 export function normalizeAngle(angle: number): number {
@@ -26,33 +149,4 @@ export function normalizeAngle(angle: number): number {
         normalized += 360;
     }
     return normalized;
-}
-
-export function toDMS(degrees: number): { degrees: number; minutes: number; seconds: number } {
-    const absValue = Math.abs(degrees);
-    const d = Math.floor(absValue);
-    const mins = (absValue - d) * 60;
-    const m = Math.floor(mins);
-    const s = Math.round((mins - m) * 60 * 1000) / 1000;
-    
-    return { 
-        degrees: degrees >= 0 ? d : -d, 
-        minutes: m, 
-        seconds: s 
-    };
-}
-
-export function julianDayToDate(jd: number): Date {
-    const a = jd + 32044;
-    const b = (4 * a + 3) / 146097;
-    const c = a - (146097 * b) / 4;
-    const d = (4 * c + 3) / 1461;
-    const e = c - (1461 * d) / 4;
-    const m = (5 * e + 2) / 153;
-    
-    const day = e - (153 * m + 2) / 5 + 1;
-    const month = m + 3 - 12 * (m / 10);
-    const year = 100 * b + d - 4800 + m / 10;
-    
-    return new Date(year, month - 1, day);
 }

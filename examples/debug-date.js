@@ -4,7 +4,7 @@
  * Debug date handling in the library
  */
 
-const { getPanchanga } = require('./dist/index.js');
+const { getPanchanga } = require('../dist/index.js');
 
 // Test with the exact same date from verify-drikpanchang.js
 const testDate = new Date('2025-07-20T12:00:00.000-07:00');
@@ -14,7 +14,7 @@ console.log('='.repeat(50));
 console.log('Original date string: 2025-07-20T12:00:00.000-07:00');
 console.log('Parsed Date object:', testDate);
 console.log('Date.toISOString():', testDate.toISOString());
-console.log('Date.toString():', testDate.toString());
+console.log('Date UTC string:', testDate.toISOString());
 console.log('Date.getDay() (0=Sunday):', testDate.getDay());
 console.log('Date in Vancouver timezone:', testDate.toLocaleString('en-US', { timeZone: 'America/Vancouver' }));
 

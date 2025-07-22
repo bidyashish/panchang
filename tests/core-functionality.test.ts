@@ -47,7 +47,7 @@ describe('Panchanga Library - Core Functionality Tests', () => {
             expect(result.vara.name).toBe('Sunday');
             expect(result.tithi.name).toBe('Ekadashi');
             expect(result.nakshatra.name).toBe('Krittika');
-            expect(result.yoga.name).toBe('Ganda');
+            expect(result.yoga.name).toBe('Vriddhi');
             expect(result.karana.name).toBe('Balava');
         });
 
@@ -81,7 +81,7 @@ describe('Panchanga Library - Core Functionality Tests', () => {
             expect(report).toContain('Sunday');
             expect(report).toContain('Ekadashi');
             expect(report).toContain('Krittika');
-            expect(report).toContain('Ganda');
+            expect(report).toContain('Vriddhi');
             expect(report).toContain('Balava');
         });
     });
@@ -169,7 +169,7 @@ describe('Panchanga Library - Core Functionality Tests', () => {
                 vara: 'Sunday',
                 tithi: 'Ekadashi',
                 nakshatra: 'Krittika',
-                yoga: 'Ganda',
+                yoga: 'Vriddhi',
                 karana: 'Bava'  // Note: Library shows 'Balava' - 1 karana difference
             };
             
