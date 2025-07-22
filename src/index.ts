@@ -3,7 +3,7 @@
  * Provides easy-to-use APIs for Panchanga and astronomical calculations
  */
 
-import { Panchanga, PanchangaData } from './panchanga/index';
+import { Panchanga } from './panchanga/index';
 import { Ephemeris } from './calculations/ephemeris';
 import { Planetary } from './calculations/planetary';
 import { Location } from './types/astronomical';
