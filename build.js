@@ -118,64 +118,23 @@ export * from './calculations/planetary';
         console.warn('⚠️  Ephemeris data directory not found, Swiss Ephemeris will use built-in data');
     }
 
-    // Create CLI script
-    console.log('🔧 Creating CLI script...');
-    const cliContent = `#!/usr/bin/env node
-const { getPanchanga, getPanchangaReport } = require('./index.js');
+    // Build CLI script
+    console.log('🔧 Building CLI script...');
+    await build({
+      entryPoints: ['src/cli.js'],
+      bundle: true,
+      platform: 'node',
+      target: 'node16',
+      format: 'cjs',
+      outfile: 'dist/cli.js',
+      minify: false, // Don't minify CLI for better error messages
+      external: ['swisseph'],
+      banner: {
+        js: '#!/usr/bin/env node\n'
+      }
+    });
 
-function showHelp() {
-  console.log(\`
-🔮 Panchang Calculator CLI
-
-Usage: npx @bidyashish/panchang [options]
-  
-Options:
-  --lat <latitude>     Latitude in degrees (required)
-  --lng <longitude>    Longitude in degrees (required) 
-  --tz <timezone>      Timezone (e.g., Asia/Kolkata) (required)
-  --date <date>        Date in YYYY-MM-DD format (optional, defaults to today)
-  --format <format>    Output format: json|report (default: report)
-  --help              Show this help message
-
-Examples:
-  npx @bidyashish/panchang --lat 28.6139 --lng 77.2090 --tz Asia/Kolkata
-  npx @bidyashish/panchang --lat 49.8880 --lng -119.4960 --tz America/Vancouver --date 2025-07-19
-\`);
-}
-
-async function main() {
-  const args = process.argv.slice(2);
-  if (args.includes('--help') || args.length === 0) { showHelp(); return; }
-  
-  const lat = parseFloat(args[args.indexOf('--lat') + 1]);
-  const lng = parseFloat(args[args.indexOf('--lng') + 1]);
-  const tz = args[args.indexOf('--tz') + 1];
-  const dateStr = args.includes('--date') ? args[args.indexOf('--date') + 1] : null;
-  const format = args.includes('--format') ? args[args.indexOf('--format') + 1] : 'report';
-  
-  if (isNaN(lat) || isNaN(lng) || !tz) {
-    console.error('❌ Error: --lat, --lng, and --tz are required');
-    showHelp(); process.exit(1);
-  }
-  
-  try {
-    const date = dateStr ? new Date(dateStr) : new Date();
-    if (format === 'json') {
-      const panchanga = await getPanchanga(date, lat, lng, tz);
-      console.log(JSON.stringify(panchanga, null, 2));
-    } else {
-      const report = await getPanchangaReport(date, lat, lng, tz);
-      console.log(report);
-    }
-  } catch (error) {
-    console.error('❌ Error calculating Panchanga:', error.message);
-    process.exit(1);
-  }
-}
-
-main().catch(console.error);`;
-
-    fs.writeFileSync('dist/cli.js', cliContent);
+    // Make CLI executable
     fs.chmodSync('dist/cli.js', '755');
 
     // Get file sizes for reporting
