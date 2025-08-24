@@ -1,0 +1,15 @@
+{
+  "test": {
+    "globals": true,
+    "environment": "node",
+    "testTimeout": 10000,
+    "hookTimeout": 10000,
+    "reporters": ["default"],
+    "pool": "threads",
+    "poolOptions": {
+      "threads": {
+        "singleThread": true
+      }
+    }
+  }
+}

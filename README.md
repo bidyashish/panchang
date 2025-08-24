@@ -464,6 +464,21 @@ Here are timezone identifiers for common locations:
 3. **Nakshatra** (नक्षत्र): Lunar mansion (1-27)
 4. **Yoga** (योग): Astronomical combination of Sun and Moon (1-27)
 5. **Karana** (करण): Half of a tithi (1-60)
+What we HAVE:
+
+Vara (Weekday): Monday ✅
+Tithi: Dwadashi with percentage ✅
+Paksha: Krishna (Waning) ✅
+Nakshatra: Mrigashira with Pada ✅
+Yoga: Dhruva ✅
+Karana: Gara ✅
+Sunrise/Sunset times ✅
+Moonrise/Moonset times ✅
+Lunar months (Amanta/Purnimanta) ✅
+Shaka/Vikrama Samvat ✅
+Sun sign/Moon sign ✅
+Rahu Kaal, Gulikai Kaal, Yamaganda ✅
+Planetary positions ✅
 
 **Additional Elements:**
 - **Paksha**: Lunar fortnight (Shukla = waxing, Krishna = waning)

@@ -99,6 +99,124 @@ export class Panchanga {
         let calculationMoment = inputDate;
         
         try {
+            // Calculate sunrise and sunset first as they're needed for many other calculations
+            const sunriseResult = this.ephemeris.calculateSunrise(inputDate, location.latitude, location.longitude);
+            const sunsetResult = this.ephemeris.calculateSunset(inputDate, location.latitude, location.longitude);
+            const moonriseResult = this.ephemeris.calculateMoonrise(inputDate, location.latitude, location.longitude);
+            const moonsetResult = this.ephemeris.calculateMoonset(inputDate, location.latitude, location.longitude);
+
+            const sunrise = sunriseResult;
+            const sunset = sunsetResult;
+            const moonrise = moonriseResult;
+            const moonset = moonsetResult;
+
+            // Calculate day and night durations
+            let dinamana = { hours: 12, minutes: 0, seconds: 0 };
+            let ratrimana = { hours: 12, minutes: 0, seconds: 0 };
+            let madhyahna: Date | null = null;
+
+            if (sunrise && sunset) {
+                const dayDuration = sunset.getTime() - sunrise.getTime();
+                const totalHours = dayDuration / (1000 * 60 * 60);
+                
+                dinamana = {
+                    hours: Math.floor(totalHours),
+                    minutes: Math.floor((totalHours % 1) * 60),
+                    seconds: Math.floor(((totalHours % 1) * 60 % 1) * 60)
+                };
+
+                const nightDuration = 24 * 60 * 60 * 1000 - dayDuration;
+                const nightHours = nightDuration / (1000 * 60 * 60);
+                
+                ratrimana = {
+                    hours: Math.floor(nightHours),
+                    minutes: Math.floor((nightHours % 1) * 60),
+                    seconds: Math.floor(((nightHours % 1) * 60 % 1) * 60)
+                };
+
+                // Madhyahna is midday - halfway between sunrise and sunset
+                madhyahna = new Date(sunrise.getTime() + dayDuration / 2);
+            }
+
+            // Calculate Muhurat periods
+            const muhurat = this.calculateMuhurats(sunrise, sunset, inputDate);
+
+            // Calculate Kalam periods
+            const kalam = this.calculateKalamPeriods(sunrise, sunset, inputDate);
+
+            // Calculate basic Panchanga elements
+            const tithiData = this.planetary.calculateTithi(calculationMoment, useSidereal);
+            const nakshatraData = this.ephemeris.calculateNakshatra(
+                this.ephemeris.calculateSiderealPosition(calculationMoment, 'Moon').longitude
+            );
+            const yogaData = this.planetary.calculateYoga(calculationMoment, useSidereal);
+            const karanaData = this.planetary.calculateKarana(calculationMoment, useSidereal);
+            
+            // Calculate vara (day of week)
+            const vara = this.calculateVara(calculationMoment);
+            
+            // Moon phase
+            const moonPhase = this.calculateMoonPhase(calculationMoment);
+            
+            // Calculate lunar month
+            const lunarMonth = this.calculateLunarMonth(calculationMoment, useSidereal);
+            
+            // Calculate Samvata years
+            const samvata = this.calculateSamvata(calculationMoment);
+            
+            // Calculate sun and moon signs
+            const sunsign = this.calculateSunSign(calculationMoment, useSidereal);
+            const moonsign = this.calculateMoonSign(calculationMoment, useSidereal);
+            
+            // Calculate Surya Nakshatra
+            const suryaNakshatra = this.calculateSuryaNakshatra(calculationMoment, useSidereal);
+            
+            // Calculate Nakshatra Pada divisions
+            const nakshatraPada = this.calculateNakshatraPadaDivisions(calculationMoment, nakshatraData);
+            
+            // Calculate seasons and Ayana
+            const ritu = this.calculateRitu(calculationMoment);
+            const ayana = this.calculateAyana(calculationMoment);
+
+            return {
+                date: inputDate,
+                location: {
+                    latitude: location.latitude,
+                    longitude: location.longitude,
+                    timezone: location.timezone
+                },
+                tithi: tithiData,
+                nakshatra: nakshatraData,
+                yoga: yogaData,
+                karana: karanaData,
+                vara,
+                sunrise,
+                sunset,
+                moonrise,
+                moonset,
+                moonPhase,
+                lunarMonth,
+                paksha: tithiData.paksha,
+                samvata,
+                sunsign,
+                moonsign,
+                suryaNakshatra,
+                nakshatraPada,
+                ritu,
+                ayana,
+                madhyahna,
+                dinamana,
+                ratrimana,
+                muhurat,
+                kalam
+            };
+        } catch (error) {
+            console.error('Error calculating Panchanga:', error);
+            throw error;
+        }
+    }
+        
+        try {
             // Try to get sunrise for more accurate calculation
             const sunriseTime = this.ephemeris.calculateSunrise(inputDate, location);
             if (sunriseTime && Math.abs(sunriseTime.getTime() - inputDate.getTime()) < 24 * 60 * 60 * 1000) {

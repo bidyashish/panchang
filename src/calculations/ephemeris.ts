@@ -273,46 +273,41 @@ export class Ephemeris {
 
     calculateSunrise(date: Date, location: Location): Date | null {
         try {
-            // Improved sunrise calculation using NOAA Solar Calculator algorithm
-            const year = date.getUTCFullYear();
-            const month = date.getUTCMonth() + 1;
-            const day = date.getUTCDate();
+            const swisseph = require('swisseph');
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
             
-            // Calculate Julian day number
-            const a = Math.floor((14 - month) / 12);
-            const y = year - a;
-            const m = month + 12 * a - 3;
-            const jd = day + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
+            // Convert to Julian day
+            const jd = swisseph.swe_julday(year, month, day, 12.0, 1); // Noon UTC
             
-            // Calculate day of year
-            const dayOfYear = jd - Math.floor((14 - 1) / 12) * 365 - Math.floor(y / 4) + Math.floor(y / 100) - Math.floor(y / 400) + Math.floor((153 * (1 + 12 * Math.floor((14 - 1) / 12) - 3) + 2) / 5) + 1 - 32045;
+            // Use Swiss Ephemeris rise/transit/set function
+            const geopos = [location.longitude, location.latitude, location.altitude || 0];
+            const atpress = 0; // Standard atmospheric pressure
+            const attemp = 15; // Standard temperature in Celsius
             
-            // More accurate solar calculations
-            const P = Math.asin(0.39795 * Math.cos(0.98563 * (dayOfYear - 173) * Math.PI / 180));
-            const argumentum = Math.tan(location.latitude * Math.PI / 180) * Math.tan(P);
+            // Calculate sunrise
+            const result = swisseph.swe_rise_trans(
+                jd,           // Julian day
+                swisseph.SE_SUN, // Sun
+                '',           // Star name (empty for planets)
+                swisseph.SEFLG_SWIEPH, // Use Swiss Ephemeris
+                swisseph.SE_CALC_RISE, // Calculate rise time
+                geopos,       // Geographic position
+                atpress,      // Atmospheric pressure
+                attemp        // Temperature
+            );
             
-            if (Math.abs(argumentum) > 1) {
-                return null; // Polar day or night
+            if (result && result.transitTime !== undefined) {
+                // Convert Julian day back to Date
+                const cal = swisseph.swe_jdut1_to_utc(result.transitTime, 1);
+                return new Date(cal.year, cal.month - 1, cal.day, cal.hour, cal.minute, Math.floor(cal.second));
             }
             
-            const hourAngle = Math.acos(-argumentum) * 180 / Math.PI;
-            const sunrise = 12 - hourAngle / 15 - location.longitude / 15;
-            
-            // Adjust for UTC
-            let sunriseUTC = sunrise;
-            if (sunriseUTC < 0) sunriseUTC += 24;
-            if (sunriseUTC >= 24) sunriseUTC -= 24;
-            
-            const sunriseHours = Math.floor(sunriseUTC);
-            const sunriseMinutes = Math.floor((sunriseUTC - sunriseHours) * 60);
-            const sunriseSeconds = Math.floor(((sunriseUTC - sunriseHours) * 60 - sunriseMinutes) * 60);
-            
-            return new Date(Date.UTC(year, month - 1, day, sunriseHours, sunriseMinutes, sunriseSeconds));
-            
+            return null;
         } catch (error) {
-            console.warn('Sunrise calculation failed:', error);
-            // Fallback calculation
-            return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 6, 0, 0, 0);
+            console.warn('Swiss Ephemeris sunrise calculation failed:', error);
+            return null;
         }
     }
 
@@ -353,18 +348,26 @@ export class Ephemeris {
     calculateMoonrise(date: Date, location: Location): Date | null {
         try {
             const jd = this.dateToJulian(date);
+            const geopos = [location.longitude, location.latitude, location.altitude || 0];
+            const atpress = 0; // Standard atmospheric pressure
+            const attemp = 15; // Standard temperature in Celsius
             
-            for (let hour = 0; hour < 48; hour += 0.1) { // Check 48 hours for moonrise
-                const testJd = jd - 0.5 + hour / 24;
-                const moonPos = swisseph.swe_calc_ut(testJd, swisseph.SE_MOON, swisseph.SEFLG_SWIEPH);
-                
-                if (moonPos && 'longitude' in moonPos && moonPos.longitude !== undefined) {
-                    const altitude = this.calculateMoonAltitude(moonPos.longitude, moonPos.latitude, location, testJd);
-                    
-                    if (altitude > -0.8333 && hour > 3) {
-                        return this.julianToDate(testJd);
-                    }
-                }
+            // Use Swiss Ephemeris swe_rise_trans for moonrise
+            const result = swisseph.swe_rise_trans(
+                jd,           // Julian day
+                swisseph.SE_MOON, // Moon
+                '',           // Star name (empty for planets)
+                swisseph.SEFLG_SWIEPH, // Use Swiss Ephemeris
+                swisseph.SE_CALC_RISE, // Calculate rise time
+                geopos,       // Geographic position
+                atpress,      // Atmospheric pressure
+                attemp        // Temperature
+            );
+            
+            if (result && 'transitTime' in result && result.transitTime !== undefined) {
+                // Convert Julian day back to Date
+                const cal = swisseph.swe_jdut1_to_utc(result.transitTime, 1);
+                return new Date(cal.year, cal.month - 1, cal.day, cal.hour, cal.minute, Math.floor(cal.second));
             }
             
             return null;

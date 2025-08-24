@@ -3,7 +3,7 @@
  * Provides easy-to-use APIs for Panchanga and astronomical calculations
  */
 
-import { Panchanga } from './panchanga/index';
+import { EnhancedPanchanga, EnhancedPanchangaData } from './panchanga/enhanced';
 import { Ephemeris } from './calculations/ephemeris';
 import { Planetary } from './calculations/planetary';
 import { Location } from './types/astronomical';
@@ -17,7 +17,9 @@ import {
 
 // Re-export types for consumers
 export * from './types/astronomical';
-export * from './panchanga/index';
+export * from './panchanga/enhanced';
+export * from './panchanga/muhurat';
+export * from './panchanga/transitions';
 export * from './calculations/ephemeris';
 export * from './calculations/planetary';
 
@@ -195,12 +197,12 @@ export interface PanchangaOutput {
  * Main class for astronomical calculations
  */
 export class AstronomicalCalculator {
-    private panchanga: Panchanga;
+    private panchanga: EnhancedPanchanga;
     private ephemeris: Ephemeris;
     private planetary: Planetary;
 
     constructor() {
-        this.panchanga = new Panchanga();
+        this.panchanga = new EnhancedPanchanga();
         this.ephemeris = new Ephemeris();
         this.planetary = new Planetary();
     }
@@ -489,7 +491,7 @@ export class AstronomicalCalculator {
      */
     public cleanup(): void {
         this.ephemeris.cleanup();
-        this.panchanga.cleanup();
+        // Enhanced panchanga doesn't need cleanup - it uses ephemeris which handles cleanup
     }
 
     /**
