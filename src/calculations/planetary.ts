@@ -1,4 +1,3 @@
-import { OrbitalElements } from '../types/astronomical';
 import { normalizeAngle } from '../utils/index';
 
 export interface OrbitalParameters {
