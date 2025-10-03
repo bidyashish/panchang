@@ -31,16 +31,20 @@ export function formatTimeUTC(date: Date | null): string {
  * @returns Formatted date string in the specified timezone
  */
 export function formatDateInTimezone(
-    date: Date | null, 
-    timezone: string = 'UTC', 
+    date: Date | null,
+    timezone: string = 'UTC',
     formatPattern: string = 'yyyy-MM-dd HH:mm:ss'
 ): string {
-    if (!date) return 'N/A';
+    if (!date || isNaN(date.getTime())) return 'N/A';
     try {
         return formatInTimeZone(date, timezone, formatPattern);
     } catch (error) {
         // Fallback to UTC if timezone is invalid
-        return formatInTimeZone(date, 'UTC', formatPattern);
+        try {
+            return formatInTimeZone(date, 'UTC', formatPattern);
+        } catch {
+            return 'N/A';
+        }
     }
 }
 
@@ -52,15 +56,19 @@ export function formatDateInTimezone(
  * @returns Formatted time string in the specified timezone
  */
 export function formatTimeInTimezone(
-    date: Date | null, 
-    timezone: string = 'UTC', 
+    date: Date | null,
+    timezone: string = 'UTC',
     formatPattern: string = 'HH:mm:ss'
 ): string {
-    if (!date) return 'N/A';
+    if (!date || isNaN(date.getTime())) return 'N/A';
     try {
         return formatInTimeZone(date, timezone, formatPattern);
     } catch (error) {
-        return formatInTimeZone(date, 'UTC', formatPattern);
+        try {
+            return formatInTimeZone(date, 'UTC', formatPattern);
+        } catch {
+            return 'N/A';
+        }
     }
 }
 
@@ -124,23 +132,27 @@ export interface FormattedDateInfo {
 }
 
 export function getFormattedDateInfo(
-    date: Date | null, 
+    date: Date | null,
     primaryTimezone: string = 'UTC'
 ): FormattedDateInfo | null {
-    if (!date) return null;
-    
-    return {
-        original: date,
-        utc: date.toISOString(),
-        local: formatDateInTimezone(date, primaryTimezone, 'yyyy-MM-dd HH:mm:ss zzz'),
-        localTime: formatTimeInTimezone(date, primaryTimezone, 'HH:mm:ss'),
-        localDate: formatDateInTimezone(date, primaryTimezone, 'yyyy-MM-dd'),
-        timezone: primaryTimezone,
-        timestamp: date.getTime(),
-        year: parseInt(formatInTimeZone(date, primaryTimezone, 'yyyy')),
-        month: parseInt(formatInTimeZone(date, primaryTimezone, 'MM')),
-        day: parseInt(formatInTimeZone(date, primaryTimezone, 'dd'))
-    };
+    if (!date || isNaN(date.getTime())) return null;
+
+    try {
+        return {
+            original: date,
+            utc: date.toISOString(),
+            local: formatDateInTimezone(date, primaryTimezone, 'yyyy-MM-dd HH:mm:ss zzz'),
+            localTime: formatTimeInTimezone(date, primaryTimezone, 'HH:mm:ss'),
+            localDate: formatDateInTimezone(date, primaryTimezone, 'yyyy-MM-dd'),
+            timezone: primaryTimezone,
+            timestamp: date.getTime(),
+            year: parseInt(formatInTimeZone(date, primaryTimezone, 'yyyy')),
+            month: parseInt(formatInTimeZone(date, primaryTimezone, 'MM')),
+            day: parseInt(formatInTimeZone(date, primaryTimezone, 'dd'))
+        };
+    } catch (error) {
+        return null;
+    }
 }
 
 export function normalizeAngle(angle: number): number {

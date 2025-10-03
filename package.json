@@ -17,6 +17,7 @@
   },
   "scripts": {
     "build": "node build.js",
+    "clean": "rm -rf dist",
     "start": "node dist/app.js",
     "dev": "ts-node src/app.ts",
     "test": "vitest",
@@ -24,7 +25,7 @@
     "test:run": "vitest --run",
     "prepublishOnly": "npm run clean && npm run build && npm run test:run",
     "example": "node examples/library-verification.js",
-    "verify": "node examples/simple-verify.js"
+    "verify": "node verify-timespan.js"
   },
   "dependencies": {
     "date-fns": "^4.1.0",

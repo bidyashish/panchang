@@ -285,33 +285,48 @@ export class Planetary {
 
         // Calculate elongation (longitude difference between Moon and Sun)
         const elongation = normalizeAngle(moonLongitude - sunLongitude);
-        
+
         // Each karana spans 6 degrees (half a tithi)
         const karanaArc = 6; // degrees
         let karanaIndex = Math.floor(elongation / karanaArc);
-        
+
         // Handle the cyclic nature of karanas properly
         // In a lunar month, there are 60 karanas total:
-        // - First 57 karanas: 7 movable karanas (Bava through Vishti) repeat in cycles
-        // - Last 4 karanas: fixed karanas (Shakuni, Chatushpada, Naga, Kimstughna)
-        
+        // Karana 1: Kimstughna (fixed) - Shukla Pratipada, 1st half
+        // Karanas 2-58: 7 movable karanas (Bava-Vishti) repeating in 8+ cycles
+        // Karana 59: Shakuni (fixed) - Krishna Chaturdashi, 2nd half
+        // Karana 60: Chatushpada (fixed) - Amavasya, 1st half
+        // (Some systems include Naga as Karana 60 or after Chatushpada)
+
         let finalIndex: number;
         let karanaNumber: number;
-        
-        if (karanaIndex < 57) {
-            // Movable karanas (first 57) - cycle through Bava to Vishti
-            finalIndex = karanaIndex % 7;
+
+        if (karanaIndex === 0) {
+            // First karana: Kimstughna (fixed)
+            finalIndex = 10; // Index in karanaNames array
+            karanaNumber = 1;
+        } else if (karanaIndex < 58) {
+            // Movable karanas (2-58): cycle through Bava to Vishti
+            // Formula: (karanaIndex - 1) % 7 gives us the cyclic pattern starting with Bava
+            finalIndex = (karanaIndex - 1) % 7;
             karanaNumber = karanaIndex + 1;
+        } else if (karanaIndex === 58) {
+            // Karana 59: Shakuni (fixed)
+            finalIndex = 7;
+            karanaNumber = 59;
+        } else if (karanaIndex === 59) {
+            // Karana 60: Chatushpada (fixed)
+            finalIndex = 8;
+            karanaNumber = 60;
         } else {
-            // Fixed karanas (last 4)
-            const fixedIndex = Math.min(3, karanaIndex - 57);
-            finalIndex = 7 + fixedIndex;
-            karanaNumber = 58 + fixedIndex;
+            // Beyond normal range - use Naga as fallback
+            finalIndex = 9;
+            karanaNumber = 60;
         }
-        
+
         // Ensure we don't go beyond array bounds
         finalIndex = Math.min(Math.max(0, finalIndex), karanaNames.length - 1);
-        
+
         return {
             karana: karanaNumber,
             name: karanaNames[finalIndex]

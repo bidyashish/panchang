@@ -87,9 +87,9 @@ export class EnhancedPanchanga {
 
     calculatePanchanga(date: Date, location: Location, useSidereal: boolean = true): EnhancedPanchangaData {
         const inputDate = date;
-        
+
         try {
-            // Calculate sunrise/sunset and other solar events
+            // Calculate sunrise/sunset and other solar events for the given date
             const sunrise = this.ephemeris.calculateSunrise(inputDate, location);
             const sunset = this.ephemeris.calculateSunset(inputDate, location);
             const moonrise = this.ephemeris.calculateMoonrise(inputDate, location);
@@ -104,9 +104,21 @@ export class EnhancedPanchanga {
             // Calculate Kalam periods
             const kalam = this.calculateKalamPeriods(sunrise, sunset, inputDate);
 
-            // Get celestial positions
-            const sunPos = this.ephemeris.calculateSiderealPosition(inputDate, 'Sun');
-            const moonPos = this.ephemeris.calculateSiderealPosition(inputDate, 'Moon');
+            // CRITICAL: Traditional Panchanga uses positions at SUNRISE, not the input time
+            // This is a fundamental principle of Vedic Panchanga calculations
+            // If sunrise calculation fails or returns invalid date, use inputDate at local sunrise time (6 AM local)
+            let calculationTime: Date;
+            if (sunrise && !isNaN(sunrise.getTime())) {
+                calculationTime = sunrise;
+            } else {
+                // Fallback: Use inputDate but set time to approximate sunrise (6 AM local time)
+                calculationTime = new Date(inputDate);
+                calculationTime.setHours(6, 0, 0, 0);
+            }
+
+            // Get celestial positions at sunrise for accurate Panchanga
+            const sunPos = this.ephemeris.calculateSiderealPosition(calculationTime, 'Sun');
+            const moonPos = this.ephemeris.calculateSiderealPosition(calculationTime, 'Moon');
 
             // Calculate basic Panchanga elements
             const tithiData = this.planetary.calculateTithi(sunPos.longitude, moonPos.longitude);

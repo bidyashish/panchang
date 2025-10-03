@@ -273,40 +273,79 @@ export class Ephemeris {
 
     calculateSunrise(date: Date, location: Location): Date | null {
         try {
-            const swisseph = require('swisseph');
-            const year = date.getFullYear();
-            const month = date.getMonth() + 1;
-            const day = date.getDate();
-            
-            // Convert to Julian day
-            const jd = swisseph.swe_julday(year, month, day, 12.0, 1); // Noon UTC
-            
-            // Use Swiss Ephemeris rise/transit/set function
-            const geopos = [location.longitude, location.latitude, location.altitude || 0];
-            const atpress = 0; // Standard atmospheric pressure
-            const attemp = 15; // Standard temperature in Celsius
-            
-            // Calculate sunrise
-            const result = swisseph.swe_rise_trans(
-                jd,           // Julian day
-                swisseph.SE_SUN, // Sun
-                '',           // Star name (empty for planets)
-                swisseph.SEFLG_SWIEPH, // Use Swiss Ephemeris
-                swisseph.SE_CALC_RISE, // Calculate rise time
-                geopos,       // Geographic position
-                atpress,      // Atmospheric pressure
-                attemp        // Temperature
-            );
-            
-            if (result && result.transitTime !== undefined) {
-                // Convert Julian day back to Date
-                const cal = swisseph.swe_jdut1_to_utc(result.transitTime, 1);
-                return new Date(cal.year, cal.month - 1, cal.day, cal.hour, cal.minute, Math.floor(cal.second));
+            // Use algorithmic sunrise calculation (NOAA Solar Calculator)
+            // This is more reliable than Swiss Ephemeris swe_rise_trans which has API issues
+            const year = date.getUTCFullYear();
+            const month = date.getUTCMonth() + 1;
+            const day = date.getUTCDate();
+
+            // Calculate Julian Day
+            const a = Math.floor((14 - month) / 12);
+            const y = year - a;
+            const m = month + 12 * a - 3;
+            const jdn = day + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
+
+            // Calculate day of year
+            const N1 = Math.floor(275 * month / 9);
+            const N2 = Math.floor((month + 9) / 12);
+            const N3 = (1 + Math.floor((year - 4 * Math.floor(year / 4) + 2) / 3));
+            const N = N1 - (N2 * N3) + day - 30;
+
+            // Convert longitude to hour value and calculate an approximate time
+            const lngHour = location.longitude / 15;
+            const t = N + ((6 - lngHour) / 24);
+
+            // Calculate Sun's mean anomaly
+            const M = (0.9856 * t) - 3.289;
+
+            // Calculate Sun's true longitude
+            let L = M + (1.916 * Math.sin(M * Math.PI / 180)) + (0.020 * Math.sin(2 * M * Math.PI / 180)) + 282.634;
+            L = L % 360;
+            if (L < 0) L += 360;
+
+            // Calculate Sun's right ascension
+            let RA = Math.atan(0.91764 * Math.tan(L * Math.PI / 180)) * 180 / Math.PI;
+            RA = RA % 360;
+            if (RA < 0) RA += 360;
+
+            // Right ascension value needs to be in the same quadrant as L
+            const Lquadrant = Math.floor(L / 90) * 90;
+            const RAquadrant = Math.floor(RA / 90) * 90;
+            RA = RA + (Lquadrant - RAquadrant);
+
+            // Right ascension value needs to be converted into hours
+            RA = RA / 15;
+
+            // Calculate Sun's declination
+            const sinDec = 0.39782 * Math.sin(L * Math.PI / 180);
+            const cosDec = Math.cos(Math.asin(sinDec));
+
+            // Calculate Sun's local hour angle
+            const cosH = (Math.cos(90.833 * Math.PI / 180) - (sinDec * Math.sin(location.latitude * Math.PI / 180))) / (cosDec * Math.cos(location.latitude * Math.PI / 180));
+
+            if (cosH > 1 || cosH < -1) {
+                // Sun never rises or sets at this location on this date
+                return null;
             }
-            
-            return null;
+
+            // Calculate local mean time of rising
+            const H = 360 - (Math.acos(cosH) * 180 / Math.PI);
+            const T = H / 15 + RA - (0.06571 * t) - 6.622;
+
+            // Adjust back to UTC
+            let UT = T - lngHour;
+            UT = UT % 24;
+            if (UT < 0) UT += 24;
+
+            // Convert to hours, minutes, seconds
+            const hours = Math.floor(UT);
+            const minutes = Math.floor((UT - hours) * 60);
+            const seconds = Math.floor(((UT - hours) * 60 - minutes) * 60);
+
+            return new Date(Date.UTC(year, month - 1, day, hours, minutes, seconds));
+
         } catch (error) {
-            console.warn('Swiss Ephemeris sunrise calculation failed:', error);
+            console.warn('Sunrise calculation failed:', error);
             return null;
         }
     }
@@ -434,46 +473,69 @@ export class Ephemeris {
 
     calculateSunset(date: Date, location: Location): Date | null {
         try {
-            // Improved sunset calculation using NOAA Solar Calculator algorithm
+            // Use algorithmic sunset calculation (NOAA Solar Calculator)
             const year = date.getUTCFullYear();
             const month = date.getUTCMonth() + 1;
             const day = date.getUTCDate();
-            
-            // Calculate Julian day number
-            const a = Math.floor((14 - month) / 12);
-            const y = year - a;
-            const m = month + 12 * a - 3;
-            const jd = day + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
-            
+
             // Calculate day of year
-            const dayOfYear = jd - Math.floor((14 - 1) / 12) * 365 - Math.floor(y / 4) + Math.floor(y / 100) - Math.floor(y / 400) + Math.floor((153 * (1 + 12 * Math.floor((14 - 1) / 12) - 3) + 2) / 5) + 1 - 32045;
-            
-            // More accurate solar calculations
-            const P = Math.asin(0.39795 * Math.cos(0.98563 * (dayOfYear - 173) * Math.PI / 180));
-            const argumentum = Math.tan(location.latitude * Math.PI / 180) * Math.tan(P);
-            
-            if (Math.abs(argumentum) > 1) {
-                return null; // Polar day or night
+            const N1 = Math.floor(275 * month / 9);
+            const N2 = Math.floor((month + 9) / 12);
+            const N3 = (1 + Math.floor((year - 4 * Math.floor(year / 4) + 2) / 3));
+            const N = N1 - (N2 * N3) + day - 30;
+
+            // Convert longitude to hour value and calculate an approximate time
+            const lngHour = location.longitude / 15;
+            const t = N + ((18 - lngHour) / 24); // Use 18 for sunset (instead of 6 for sunrise)
+
+            // Calculate Sun's mean anomaly
+            const M = (0.9856 * t) - 3.289;
+
+            // Calculate Sun's true longitude
+            let L = M + (1.916 * Math.sin(M * Math.PI / 180)) + (0.020 * Math.sin(2 * M * Math.PI / 180)) + 282.634;
+            L = L % 360;
+            if (L < 0) L += 360;
+
+            // Calculate Sun's right ascension
+            let RA = Math.atan(0.91764 * Math.tan(L * Math.PI / 180)) * 180 / Math.PI;
+            RA = RA % 360;
+            if (RA < 0) RA += 360;
+
+            // Right ascension value needs to be in the same quadrant as L
+            const Lquadrant = Math.floor(L / 90) * 90;
+            const RAquadrant = Math.floor(RA / 90) * 90;
+            RA = RA + (Lquadrant - RAquadrant);
+            RA = RA / 15;
+
+            // Calculate Sun's declination
+            const sinDec = 0.39782 * Math.sin(L * Math.PI / 180);
+            const cosDec = Math.cos(Math.asin(sinDec));
+
+            // Calculate Sun's local hour angle
+            const cosH = (Math.cos(90.833 * Math.PI / 180) - (sinDec * Math.sin(location.latitude * Math.PI / 180))) / (cosDec * Math.cos(location.latitude * Math.PI / 180));
+
+            if (cosH > 1 || cosH < -1) {
+                return null; // Sun never rises or sets
             }
-            
-            const hourAngle = Math.acos(-argumentum) * 180 / Math.PI;
-            const sunset = 12 + hourAngle / 15 - location.longitude / 15;
-            
-            // Adjust for UTC
-            let sunsetUTC = sunset;
-            if (sunsetUTC < 0) sunsetUTC += 24;
-            if (sunsetUTC >= 24) sunsetUTC -= 24;
-            
-            const sunsetHours = Math.floor(sunsetUTC);
-            const sunsetMinutes = Math.floor((sunsetUTC - sunsetHours) * 60);
-            const sunsetSeconds = Math.floor(((sunsetUTC - sunsetHours) * 60 - sunsetMinutes) * 60);
-            
-            return new Date(Date.UTC(year, month - 1, day, sunsetHours, sunsetMinutes, sunsetSeconds));
-            
+
+            // Calculate local mean time of setting (note: different from sunrise)
+            const H = Math.acos(cosH) * 180 / Math.PI;
+            const T = H / 15 + RA - (0.06571 * t) - 6.622;
+
+            // Adjust back to UTC
+            let UT = T - lngHour;
+            UT = UT % 24;
+            if (UT < 0) UT += 24;
+
+            const hours = Math.floor(UT);
+            const minutes = Math.floor((UT - hours) * 60);
+            const seconds = Math.floor(((UT - hours) * 60 - minutes) * 60);
+
+            return new Date(Date.UTC(year, month - 1, day, hours, minutes, seconds));
+
         } catch (error) {
             console.warn('Sunset calculation failed:', error);
-            // Fallback calculation
-            return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 18, 0, 0, 0);
+            return null;
         }
     }
 
